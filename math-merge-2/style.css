@@ -1486,3 +1486,279 @@ body {
 .room.special-right {
     border-left: none !important;
 }
+
+/* ==================== SHOP ITEMS SECTION ==================== */
+
+.shop-section-desc {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: -8px 0 14px;
+    line-height: 1.5;
+}
+
+.items-shop-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+}
+
+.item-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    text-align: center;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    position: relative;
+    overflow: visible;
+}
+
+.item-card:hover {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 18px rgba(0,240,255,0.2);
+    transform: translateY(-2px);
+}
+
+.item-card-icon {
+    font-size: 2rem;
+    line-height: 1;
+    filter: drop-shadow(0 0 6px rgba(0,240,255,0.4));
+}
+
+.item-card-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.item-card-desc {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+    min-height: 32px;
+}
+
+.item-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.item-owned-badge {
+    font-size: 0.7rem;
+    background: rgba(0,240,255,0.15);
+    color: var(--neon-cyan);
+    border: 1px solid rgba(0,240,255,0.3);
+    border-radius: 8px;
+    padding: 2px 8px;
+    font-weight: 700;
+}
+
+.btn-buy-item {
+    background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+    border: none;
+    border-radius: 8px;
+    color: #000;
+    font-size: 0.72rem;
+    font-weight: 800;
+    padding: 5px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: opacity 0.2s, transform 0.1s;
+    white-space: nowrap;
+}
+
+.btn-buy-item:hover:not(:disabled) {
+    opacity: 0.85;
+    transform: scale(1.04);
+}
+
+.btn-buy-item:disabled {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+/* ==================== IN-GAME INVENTORY SIDEBAR ==================== */
+
+.gameplay-area-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 8px;
+}
+
+.game-inventory-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 6px;
+    background: rgba(10, 10, 30, 0.7);
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    border-radius: 14px;
+    min-width: 64px;
+    max-width: 70px;
+    align-items: center;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 10px;
+    backdrop-filter: blur(8px);
+}
+
+.game-inventory-sidebar::before {
+    content: '🎒';
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.game-inventory-btn {
+    position: relative;
+    width: 52px;
+    height: 52px;
+    border-radius: 12px;
+    border: 1px solid rgba(0,240,255,0.3);
+    background: linear-gradient(135deg, rgba(0,240,255,0.08) 0%, rgba(189,0,255,0.08) 100%);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    transition: border-color 0.2s, transform 0.15s, box-shadow 0.2s;
+    overflow: visible;
+}
+
+.game-inventory-btn:hover:not(.disabled) {
+    border-color: var(--neon-cyan);
+    box-shadow: 0 0 14px rgba(0,240,255,0.35);
+    transform: scale(1.08);
+}
+
+.game-inventory-btn:active:not(.disabled) {
+    transform: scale(0.95);
+}
+
+.game-inventory-btn.disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    border-color: rgba(255,255,255,0.1);
+}
+
+.inv-icon {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.inv-badge {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    background: var(--neon-pink);
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 800;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 6px rgba(255,0,127,0.5);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+.inv-name-hint {
+    font-size: 0.5rem;
+    color: var(--text-muted);
+    line-height: 1;
+    max-width: 48px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: none;
+}
+
+.game-inventory-btn:hover .inv-name-hint {
+    display: block;
+}
+
+/* ==================== FLOATING TEXT EFFECTS ==================== */
+
+.floating-text {
+    position: absolute;
+    pointer-events: none;
+    font-size: 1.1rem;
+    font-weight: 800;
+    z-index: 9999;
+    animation: floatUp 1s ease-out forwards;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    text-shadow: 0 0 8px currentColor;
+}
+
+.float-add {
+    color: #00f0ff;
+}
+
+.float-add-shield {
+    color: #40e0ff;
+}
+
+.float-multiply {
+    color: #ffd700;
+}
+
+@keyframes floatUp {
+    0%   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-55px); }
+}
+
+/* Mobile adjustments for inventory */
+@media (max-width: 600px) {
+    .gameplay-area-wrapper {
+        flex-direction: column-reverse;
+        align-items: center;
+        padding: 0 4px;
+        gap: 6px;
+    }
+
+    .game-inventory-sidebar {
+        flex-direction: row;
+        min-width: unset;
+        max-width: unset;
+        width: 100%;
+        justify-content: center;
+        padding: 8px 10px;
+        margin-top: 0;
+        gap: 12px;
+    }
+
+    .game-inventory-sidebar::before {
+        display: none;
+    }
+
+    .game-inventory-btn {
+        width: 48px;
+        height: 48px;
+    }
+
+    .items-shop-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}

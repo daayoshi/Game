@@ -126,9 +126,16 @@
             </div>
 
             <!-- Main Interactive Tower Area -->
-            <div class="gameplay-viewport">
-                <div id="towers-wrapper" class="towers-wrapper">
-                    <!-- Towers will be generated here -->
+            <div class="gameplay-area-wrapper">
+                <!-- In-game item inventory sidebar -->
+                <div id="game-inventory-container" class="game-inventory-sidebar">
+                    <!-- Items rendered here dynamically -->
+                </div>
+
+                <div class="gameplay-viewport">
+                    <div id="towers-wrapper" class="towers-wrapper">
+                        <!-- Towers will be generated here -->
+                    </div>
                 </div>
             </div>
 
@@ -172,6 +179,15 @@
                         <button id="btn-upgrade-gold" class="btn-buy">
                             <span id="cost-upgrade-gold">150</span> <i class="fas fa-coins"></i>
                         </button>
+                    </div>
+                </div>
+
+                <!-- Item Shop Section -->
+                <div class="shop-section">
+                    <h3>🎒 お助けアイテム</h3>
+                    <p class="shop-section-desc">ゲーム中にいつでも使えるアイテムを購入できます。購入したアイテムはステージ画面の横に表示されます。</p>
+                    <div class="items-shop-grid" id="items-shop-container">
+                        <!-- Items generated dynamically by renderShop() -->
                     </div>
                 </div>
 

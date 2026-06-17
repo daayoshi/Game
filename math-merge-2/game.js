@@ -27,6 +27,14 @@ const CLASSES = {
   }
 };
 
+// 持ち込みアイテム・装備の定義
+const SHOP_ITEMS = {
+  potion: { id: 'potion', name: 'HPポーション', icon: '🧪', desc: 'パワーを+50する', price: 100 },
+  shield: { id: 'shield', name: '守護の盾', icon: '🛡️', desc: 'シールドを+30する', price: 150 },
+  key: { id: 'key', name: '予備の鍵', icon: '🔑', desc: '所持キーを+1する', price: 200 },
+  sword: { id: 'sword', name: '力の古文書', icon: '📕', desc: 'パワーを1.5倍にする', price: 300 }
+};
+
 // クラスリスト（ループ用）
 const CLASS_LIST = ['warrior', 'mage', 'rogue'];
 
@@ -83,7 +91,13 @@ let gameState = {
     maxPowerReached: 0,
     maxEndlessHeight: 0
   },
-  claimedAchievements: []   // 獲得済みの実績ID
+  claimedAchievements: [],   // 獲得済みの実績ID
+  inventory: {               // 所持アイテム
+    potion: 0,
+    shield: 0,
+    key: 0,
+    sword: 0
+  }
 };
 
 // プレイ中のゲームデータ
@@ -220,9 +234,15 @@ const loadGame = () => {
         stats: { ...gameState.stats, ...parsed.stats }
       };
       
-      // 配列の復元
+      // 配列・オブジェクトの復元
       if (parsed.unlockedSkins) gameState.unlockedSkins = parsed.unlockedSkins;
       if (parsed.claimedAchievements) gameState.claimedAchievements = parsed.claimedAchievements;
+      if (parsed.inventory) {
+        gameState.inventory = {
+          ...gameState.inventory,
+          ...parsed.inventory
+        };
+      }
     } catch (e) {
       console.error('Save data corrupt, resetting', e);
     }
@@ -231,6 +251,11 @@ const loadGame = () => {
   // クラスのデータ整合性チェックとフォールバック
   if (!gameState.selectedClass || !CLASS_LIST.includes(gameState.selectedClass)) {
     gameState.selectedClass = 'warrior';
+  }
+
+  // インベントリのデータ整合性チェック
+  if (!gameState.inventory) {
+    gameState.inventory = { potion: 0, shield: 0, key: 0, sword: 0 };
   }
   
   updateGlobalCurrencyDisplays();
@@ -470,6 +495,7 @@ const startStage = (stageIdx) => {
   document.querySelector('.endless-height-info').classList.add('hide');
   
   generateTowerUI(levelData);
+  renderGameInventory();
   navigateTo('screen-game');
 };
 
@@ -491,6 +517,7 @@ const startEndlessGame = () => {
   
   // エンドレス用の初期タワー生成
   generateNextEndlessTower();
+  renderGameInventory();
   
   document.getElementById('game-level-title').innerText = 'ENDLESS';
   const heightInfo = document.querySelector('.endless-height-info');
@@ -1645,6 +1672,134 @@ const renderShop = () => {
     const skinsSection = skinsContainer.closest('.shop-section');
     if (skinsSection) skinsSection.style.display = 'none';
   }
+
+  // 3. 持ち込みアイテムショップの描画
+  const itemsContainer = document.getElementById('items-shop-container');
+  if (itemsContainer) {
+    itemsContainer.innerHTML = '';
+    
+    Object.keys(SHOP_ITEMS).forEach(itemId => {
+      const item = SHOP_ITEMS[itemId];
+      const count = gameState.inventory[itemId] || 0;
+      const card = document.createElement('div');
+      card.classList.add('item-card');
+      
+      card.innerHTML = `
+        <div class="item-card-icon">${item.icon}</div>
+        <div class="item-card-name">${item.name}</div>
+        <div class="item-card-desc">${item.desc}</div>
+        <div class="item-card-footer">
+          <span class="item-owned-badge">所持: ${count}</span>
+          <button class="btn-buy-item" data-id="${itemId}" ${gameState.gold < item.price ? 'disabled' : ''}>
+            ${item.price}<i class="fas fa-coins" style="margin-left:3px;"></i>
+          </button>
+        </div>
+      `;
+      
+      itemsContainer.appendChild(card);
+    });
+    
+    // アイテム購入イベントの登録
+    itemsContainer.querySelectorAll('.btn-buy-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const itemId = btn.dataset.id;
+        const item = SHOP_ITEMS[itemId];
+        if (gameState.gold >= item.price) {
+          gameState.gold -= item.price;
+          gameState.inventory[itemId] = (gameState.inventory[itemId] || 0) + 1;
+          window.sounds.playUpgrade();
+          saveGame();
+          renderShop();
+        }
+      });
+    });
+  }
+};
+
+// ==================== 11-B. IN-GAME INVENTORY & ITEMS USE ====================
+
+// ゲーム内でのアイテム使用
+const useItem = (itemId) => {
+  const count = gameState.inventory[itemId] || 0;
+  if (count <= 0) return;
+
+  // 各アイテムの効果適用
+  let changeText = '';
+  switch (itemId) {
+    case 'potion':
+      activeGame.heroPower += 50;
+      changeText = '+50';
+      break;
+    case 'shield':
+      activeGame.shield += 30;
+      changeText = '🛡️+30';
+      break;
+    case 'key':
+      activeGame.keys += 1;
+      changeText = '🔑+1';
+      break;
+    case 'sword':
+      const prevPower = activeGame.heroPower;
+      activeGame.heroPower = Math.round(activeGame.heroPower * 1.5);
+      changeText = `x1.5 (+${activeGame.heroPower - prevPower})`;
+      break;
+  }
+
+  // 所持数を減らしてセーブ
+  gameState.inventory[itemId]--;
+  saveGame();
+
+  // 音声を再生
+  window.sounds.playUpgrade();
+
+  // フローティングテキストエフェクトの発生
+  spawnFloatingTextAtHero(changeText, itemId === 'shield' ? 'float-add-shield' : 'float-add');
+
+  // UIを更新
+  updateGlobalCurrencyDisplays();
+  generateTowerUI(activeGame.activeLevelData); // ゲーム画面の再描画
+  renderGameInventory(); // インベントリスロットの再描画
+};
+
+// ヒーロー位置にフローティングテキストを表示するヘルパー
+const spawnFloatingTextAtHero = (text, typeClass) => {
+  const heroRoom = document.querySelector(`.room .entity-hero`);
+  if (!heroRoom) return;
+
+  const floatEl = document.createElement('div');
+  floatEl.classList.add('floating-text', typeClass);
+  floatEl.innerText = text;
+  
+  heroRoom.appendChild(floatEl);
+  setTimeout(() => floatEl.remove(), 1000);
+};
+
+// ゲーム中のインベントリスロットUIの描画
+const renderGameInventory = () => {
+  const container = document.getElementById('game-inventory-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  Object.keys(SHOP_ITEMS).forEach(itemId => {
+    const item = SHOP_ITEMS[itemId];
+    const count = gameState.inventory[itemId] || 0;
+    const btn = document.createElement('button');
+    btn.classList.add('game-inventory-btn');
+    if (count <= 0) btn.classList.add('disabled');
+    btn.disabled = count <= 0;
+
+    btn.innerHTML = `
+      <span class="inv-icon">${item.icon}</span>
+      <span class="inv-badge">${count}</span>
+      <span class="inv-name-hint">${item.name}</span>
+    `;
+
+    btn.addEventListener('click', () => {
+      useItem(itemId);
+    });
+
+    container.appendChild(btn);
+  });
 };
 
 // ==================== 12. ACHIEVEMENTS LOGIC ====================
@@ -1842,9 +1997,9 @@ const STAGES = [
   // Stage 5: 盾で除算を防ぐ
   {
     towers: [
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 5 }, { type: 'item_mul', val: 2 }, { type: 'item_add', val: 15 }, { type: 'boss', val: 50 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_div', val: 2 }, { type: 'enemy_sub', val: 10 }, { type: 'empty', val: 0 }, { type: 'boss', val: 50 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 5 }, { type: 'item_mul', val: 2 }, { type: 'item_add', val: 15 }, { type: 'boss', val: 50 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 5 }, { type: 'item_mul', val: 2 }, { type: 'item_add', val: 15 }, { type: 'boss', val: 35 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_div', val: 2 }, { type: 'enemy_sub', val: 10 }, { type: 'empty', val: 0 }, { type: 'boss', val: 35 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 5 }, { type: 'item_mul', val: 2 }, { type: 'item_add', val: 15 }, { type: 'boss', val: 35 }, { type: 'princess', val: 0 }] }
     ]
   },
   // Stage 6: ダッシュと左右選択
@@ -1874,9 +2029,9 @@ const STAGES = [
   // Stage 9: 複雑なパズル、鍵と除算
   {
     towers: [
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_add', val: 60 }, { type: 'boss', val: 120 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 15 }, { type: 'enemy_sub', val: 20 }, { type: 'item_mul', val: 3 }, { type: 'boss', val: 120 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_add', val: 60 }, { type: 'boss', val: 120 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_add', val: 60 }, { type: 'boss', val: 70 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 15 }, { type: 'enemy_sub', val: 20 }, { type: 'item_mul', val: 3 }, { type: 'boss', val: 70 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_add', val: 60 }, { type: 'boss', val: 70 }, { type: 'princess', val: 0 }] }
     ]
   },
   // Stage 10: ダッシュ移動を駆使する難関
@@ -1906,9 +2061,9 @@ const STAGES = [
   // Stage 13: 鍵が二つ必要なステージ
   {
     towers: [
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 300 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 30 }, { type: 'enemy_sub', val: 50 }, { type: 'enemy_div', val: 2 }, { type: 'item_add', val: 150 }, { type: 'boss', val: 300 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 300 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 150 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 30 }, { type: 'enemy_sub', val: 50 }, { type: 'enemy_div', val: 2 }, { type: 'item_add', val: 150 }, { type: 'boss', val: 150 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 150 }, { type: 'princess', val: 0 }] }
     ]
   },
   // Stage 14: ダッシュとブロッキング
@@ -1946,17 +2101,17 @@ const STAGES = [
   // Stage 18: 王国の守護者
   {
     towers: [
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_sword', val: 300 }, { type: 'enemy_div', val: 2 }, { type: 'item_mul', val: 3 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 1500 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_sub', val: 250 }, { type: 'item_shield', val: 80 }, { type: 'enemy_sub', val: 150 }, { type: 'item_add', val: 400 }, { type: 'enemy_div', val: 2 }, { type: 'boss', val: 1500 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_sword', val: 300 }, { type: 'enemy_div', val: 2 }, { type: 'item_mul', val: 3 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 1500 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_sword', val: 300 }, { type: 'enemy_div', val: 2 }, { type: 'item_mul', val: 3 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 900 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_sub', val: 250 }, { type: 'item_shield', val: 80 }, { type: 'enemy_sub', val: 150 }, { type: 'item_add', val: 400 }, { type: 'enemy_div', val: 2 }, { type: 'boss', val: 900 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_sword', val: 300 }, { type: 'enemy_div', val: 2 }, { type: 'item_mul', val: 3 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 900 }, { type: 'princess', val: 0 }] }
     ]
   },
   // Stage 19: 死線と希望の門
   {
     towers: [
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'item_mul', val: 4 }, { type: 'item_add', val: 500 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 2000 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_div', val: 4 }, { type: 'enemy_sub', val: 300 }, { type: 'enemy_sub', val: 200 }, { type: 'item_shield', val: 50 }, { type: 'item_mul', val: 2 }, { type: 'boss', val: 2000 }, { type: 'princess', val: 0 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'item_mul', val: 4 }, { type: 'item_add', val: 500 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 2000 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'item_mul', val: 4 }, { type: 'item_add', val: 500 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 500 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_div', val: 4 }, { type: 'enemy_sub', val: 300 }, { type: 'enemy_sub', val: 200 }, { type: 'item_shield', val: 50 }, { type: 'item_mul', val: 2 }, { type: 'boss', val: 500 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'item_mul', val: 4 }, { type: 'item_add', val: 500 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 500 }, { type: 'princess', val: 0 }] }
     ]
   },
   // Stage 20: ゴッド・オブルイン
