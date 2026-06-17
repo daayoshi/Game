@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マスマティカル・タワー・クエスト | 数値マージバトル</title>
+    <meta name="description" content="数字を足してキャラクターを究極進化させ、最上階の敵を打ち倒せ！パズルと計算を組み合わせた超中毒性のマージタワーバトルゲーム。">
+    <!-- Google Fonts for premium typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Background dynamic canvas for stars/particles -->
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="app-container">
+        <!-- Floating Sound Control -->
+        <button id="btn-sound-toggle" class="floating-btn" aria-label="サウンド切り替え">
+            <i class="fas fa-volume-up"></i>
+        </button>
+
+        <!-- ==================== HOME SCREEN ==================== -->
+        <section id="screen-home" class="screen active">
+            <div class="logo-container">
+                <h1 class="game-title">
+                    <span class="title-sub">MATHEMATICAL</span>
+                    <span class="title-main">TOWER QUEST</span>
+                    <span class="title-neon">NUMBER MERGE</span>
+                </h1>
+            </div>
+            
+            <div class="hero-preview-container">
+                <!-- A dynamic CSS hero representation in 3D-like hover -->
+                <div class="hero-card-preview" id="home-hero-preview">
+                    <div class="hero-character-sprite">⚡</div>
+                    <div class="hero-power-badge">ATK: <span id="home-hero-atk">10</span></div>
+                </div>
+            </div>
+
+            <div class="menu-buttons">
+                <button id="btn-start-stages" class="menu-btn btn-primary">
+                    <span class="btn-icon"><i class="fas fa-map-marked-alt"></i></span>
+                    <span class="btn-text">ステージモード</span>
+                </button>
+                <button id="btn-start-endless" class="menu-btn btn-secondary">
+                    <span class="btn-icon"><i class="fas fa-infinity"></i></span>
+                    <span class="btn-text">エンドレスモード</span>
+                </button>
+                <div class="menu-sub-row">
+                    <button id="btn-open-shop" class="menu-btn btn-sub">
+                        <span class="btn-icon"><i class="fas fa-shopping-cart"></i></span>
+                        <span class="btn-text">ショップ</span>
+                    </button>
+                    <button id="btn-open-achievements" class="menu-btn btn-sub">
+                        <span class="btn-icon"><i class="fas fa-trophy"></i></span>
+                        <span class="btn-text">実績</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="currency-display home-currency">
+                <i class="fas fa-coins text-gold"></i>
+                <span id="home-gold-val">0</span>
+            </div>
+        </section>
+
+        <!-- ==================== STAGE SELECT SCREEN ==================== -->
+        <section id="screen-stages" class="screen">
+            <div class="screen-header">
+                <button id="btn-stages-back" class="btn-icon-back" aria-label="戻る"><i class="fas fa-chevron-left"></i></button>
+                <h2>ステージ選択</h2>
+                <div class="currency-display">
+                    <i class="fas fa-coins text-gold"></i>
+                    <span id="stages-gold-val">0</span>
+                </div>
+            </div>
+
+            <div class="stages-grid" id="stages-container">
+                <!-- Stages dynamically generated here -->
+            </div>
+        </section>
+
+        <!-- ==================== GAMEPLAY SCREEN ==================== -->
+        <section id="screen-game" class="screen">
+            <div class="screen-header">
+                <button id="btn-game-back" class="btn-icon-back" aria-label="戻る"><i class="fas fa-home"></i></button>
+                <div class="game-status-info">
+                    <span id="game-level-title">STAGE 1</span>
+                    <div class="endless-height-info hide">
+                        <i class="fas fa-arrow-up"></i> <span id="endless-height-val">0</span> F
+                    </div>
+                </div>
+                <div class="game-header-actions">
+                    <button id="btn-game-reset" class="btn-header-action" aria-label="リトライ"><i class="fas fa-redo"></i></button>
+                    <div class="currency-display">
+                        <i class="fas fa-coins text-gold"></i>
+                        <span id="game-gold-val">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Interactive Tower Area -->
+            <div class="gameplay-viewport">
+                <div id="towers-wrapper" class="towers-wrapper">
+                    <!-- Towers will be generated here -->
+                </div>
+            </div>
+
+            <!-- Hint or info bar -->
+            <div class="hint-bar">
+                <p id="game-hint-text">ヒーローをドラッグして、自分より数値の小さい部屋へ移動させよう！</p>
+            </div>
+        </section>
+
+        <!-- ==================== SHOP SCREEN ==================== -->
+        <section id="screen-shop" class="screen">
+            <div class="screen-header">
+                <button id="btn-shop-back" class="btn-icon-back" aria-label="戻る"><i class="fas fa-chevron-left"></i></button>
+                <h2>アップグレードショップ</h2>
+                <div class="currency-display">
+                    <i class="fas fa-coins text-gold"></i>
+                    <span id="shop-gold-val">0</span>
+                </div>
+            </div>
+
+            <div class="shop-content">
+                <!-- Stats Upgrades -->
+                <div class="shop-section">
+                    <h3>能力アップグレード</h3>
+                    <div class="upgrade-item">
+                        <div class="upgrade-details">
+                            <span class="upgrade-title">初期攻撃力 (Initial Power)</span>
+                            <span class="upgrade-desc">ステージ開始時のヒーローの数値を増やします。</span>
+                            <span class="upgrade-level">Lv. <span id="val-level-atk">1</span> (現在: +<span id="val-curr-atk">0</span>)</span>
+                        </div>
+                        <button id="btn-upgrade-atk" class="btn-buy">
+                            <span id="cost-upgrade-atk">100</span> <i class="fas fa-coins"></i>
+                        </button>
+                    </div>
+                    <div class="upgrade-item">
+                        <div class="upgrade-details">
+                            <span class="upgrade-title">ゴールドボーナス (Gold Finder)</span>
+                            <span class="upgrade-desc">ステージクリアおよび敵撃破時の獲得ゴールドを15%増やします。</span>
+                            <span class="upgrade-level">Lv. <span id="val-level-gold">1</span> (現在: +<span id="val-curr-gold">0</span>%)</span>
+                        </div>
+                        <button id="btn-upgrade-gold" class="btn-buy">
+                            <span id="cost-upgrade-gold">150</span> <i class="fas fa-coins"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Skins Section -->
+                <div class="shop-section">
+                    <h3>ヒーロースキン</h3>
+                    <div class="skins-grid" id="skins-container">
+                        <!-- Skins generated dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== ACHIEVEMENTS SCREEN ==================== -->
+        <section id="screen-achievements" class="screen">
+            <div class="screen-header">
+                <button id="btn-achievements-back" class="btn-icon-back" aria-label="戻る"><i class="fas fa-chevron-left"></i></button>
+                <h2>冒険の実績</h2>
+                <div class="currency-display">
+                    <i class="fas fa-coins text-gold"></i>
+                    <span id="achievements-gold-val">0</span>
+                </div>
+            </div>
+
+            <div class="achievements-list" id="achievements-container">
+                <!-- Achievements list generated dynamically -->
+            </div>
+        </section>
+    </div>
+
+    <!-- ==================== OVERLAYS & MODALS ==================== -->
+    <!-- Win Overlay -->
+    <div id="overlay-win" class="overlay">
+        <div class="overlay-card glass animate-pop">
+            <div class="overlay-icon text-success"><i class="fas fa-crown"></i></div>
+            <h2 class="overlay-title">VICTORY!</h2>
+            <p class="overlay-desc">タワーの完全制覇に成功した！</p>
+            <div class="clear-rewards">
+                <div class="reward-row">
+                    <span>獲得ゴールド:</span>
+                    <span class="text-gold"><span id="win-gold-earned">100</span> <i class="fas fa-coins"></i></span>
+                </div>
+                <div class="reward-row bonus-row hide" id="win-bonus-row">
+                    <span>(ゴールドボーナス適用:</span>
+                    <span class="text-gold">+<span id="win-gold-bonus">15</span> <i class="fas fa-coins"></i>)</span>
+                </div>
+            </div>
+            <div class="overlay-actions">
+                <button id="btn-win-next" class="overlay-btn btn-primary">次のステージへ</button>
+                <button id="btn-win-home" class="overlay-btn btn-secondary">ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lose Overlay -->
+    <div id="overlay-lose" class="overlay">
+        <div class="overlay-card glass animate-pop">
+            <div class="overlay-icon text-danger"><i class="fas fa-skull-crossbones"></i></div>
+            <h2 class="overlay-title">DEFEAT...</h2>
+            <p class="overlay-desc">ヒーローが力尽きてしまった。敵の方が強かったようだ。</p>
+            <div id="lose-endless-stats" class="clear-rewards hide">
+                <div class="reward-row">
+                    <span>到達した高さ:</span>
+                    <span class="text-neon-cyan"><span id="lose-endless-height">0</span> 階</span>
+                </div>
+                <div class="reward-row">
+                    <span>獲得ゴールド:</span>
+                    <span class="text-gold"><span id="lose-endless-gold">0</span> <i class="fas fa-coins"></i></span>
+                </div>
+            </div>
+            <div class="overlay-actions">
+                <button id="btn-lose-retry" class="overlay-btn btn-primary">もう一度挑戦</button>
+                <button id="btn-lose-home" class="overlay-btn btn-secondary">ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screen Transition Overlay (For slick fade transitions) -->
+    <div id="screen-transition"></div>
+
+    <!-- Scripts -->
+    <script src="sound.js"></script>
+    <script src="game.js" defer></script>
+</body>
+</html>
