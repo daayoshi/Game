@@ -414,8 +414,8 @@ const setupNavigation = () => {
   document.getElementById('btn-achievements-back').addEventListener('click', () => navigateTo('screen-home'));
   
   document.getElementById('btn-game-back').addEventListener('click', () => {
-    // プレイ中なら確認ダイアログを出さずにホームへ（カジュアルゲームのため即戻る）
-    navigateTo('screen-home');
+    // プレイ中なら確認ダイアログを出さずにポータルへ（カジュアルゲームのため即戻る）
+    window.location.href = '../index.html';
   });
   
   document.getElementById('btn-game-reset').addEventListener('click', () => {
@@ -440,7 +440,7 @@ const setupNavigation = () => {
   
   document.getElementById('btn-win-home').addEventListener('click', () => {
     document.getElementById('overlay-win').classList.remove('active');
-    navigateTo('screen-home');
+    window.location.href = '../index.html';
   });
   
   document.getElementById('btn-lose-retry').addEventListener('click', () => {
@@ -454,8 +454,16 @@ const setupNavigation = () => {
   
   document.getElementById('btn-lose-home').addEventListener('click', () => {
     document.getElementById('overlay-lose').classList.remove('active');
-    navigateTo('screen-home');
+    window.location.href = '../index.html';
   });
+  
+  // ポータルへ戻るボタンの登録
+  const btnPortal = document.getElementById('btn-back-to-portal');
+  if (btnPortal) {
+    btnPortal.addEventListener('click', () => {
+      window.location.href = '../index.html';
+    });
+  }
 };
 
 // ==================== 7. STAGE SELECT RENDERING ====================
