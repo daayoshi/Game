@@ -173,6 +173,15 @@ body {
     border-color: var(--neon-blue);
 }
 
+.math-tower-2:hover {
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(189, 0, 255, 0.25);
+    border-color: var(--neon-purple);
+}
+
+.math-tower-2:hover .game-title {
+    color: var(--neon-purple);
+}
+
 .coming-soon:hover {
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 30px rgba(255, 0, 127, 0.1);
 }
