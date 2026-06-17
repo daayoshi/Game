@@ -1471,3 +1471,18 @@ body {
     color: #ffffff !important;
     text-shadow: 0 0 4px var(--neon-purple-glow) !important;
 }
+
+/* 特殊フロア（ボス・姫）の結合表現 */
+.room.special-floor {
+    background: rgba(30, 20, 50, 0.6) !important;
+}
+.room.special-left {
+    border-right: none !important;
+}
+.room.special-center {
+    border-left: none !important;
+    border-right: none !important;
+}
+.room.special-right {
+    border-left: none !important;
+}
