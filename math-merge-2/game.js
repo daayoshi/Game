@@ -2,14 +2,33 @@
 
 // ==================== 1. CONSTANTS & GAME DATA ====================
 
-// ヒーロースキンの定義
-const SKINS = [
-  { id: 'warrior', name: '新米戦士', icon: '⚡', cost: 0, color: 'var(--neon-blue)' },
-  { id: 'knight', name: '鉄壁のナイト', icon: '🛡️', cost: 500, color: '#00ffcc' },
-  { id: 'mage', name: '魔導の使い手', icon: '🔮', cost: 1200, color: '#e500ff' },
-  { id: 'hero', name: '不死鳥の勇者', icon: '👑', cost: 3000, color: 'var(--neon-gold)' },
-  { id: 'dragon', name: '混沌のドラゴン', icon: '🐉', cost: 8000, color: '#ff3c00' }
-];
+// 主人公クラス（職業）の定義
+const CLASSES = {
+  warrior: {
+    id: 'warrior',
+    name: '戦士',
+    icon: '⚔️',
+    desc: '初期攻撃力が高めの、王道物理アタッカー。',
+    baseAtk: 15
+  },
+  mage: {
+    id: 'mage',
+    name: '魔導士',
+    icon: '🔮',
+    desc: '乗算(x)アイテムの効果が+1強化される魔法の探求者。',
+    baseAtk: 8
+  },
+  rogue: {
+    id: 'rogue',
+    name: '冒険者',
+    icon: '🏹',
+    desc: '獲得ゴールドが常に+20%される俊敏な義賊。',
+    baseAtk: 10
+  }
+};
+
+// クラスリスト（ループ用）
+const CLASS_LIST = ['warrior', 'mage', 'rogue'];
 
 // 実績の定義
 const ACHIEVEMENTS = [
@@ -22,168 +41,27 @@ const ACHIEVEMENTS = [
   { id: 'endless_50', title: '無限の挑戦者', desc: 'エンドレスモードで50階以上に到達する', target: 50, type: 'endless', reward: 800 }
 ];
 
-// ステージ定義 (全20ステージ)
-// type: 'hero' (プレイヤー), 'enemy' (敵), 'boss' (大ボス), 'item_add' (加算), 'item_mul' (乗算), 'item_sub' (減算), 'princess' (ゴール/姫), 'chest' (宝箱)
-const STAGES = [
-  // Stage 1
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 10 }, { type: 'enemy', val: 5 }] },
-      { floors: [{ type: 'enemy', val: 12 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 2
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 12 }, { type: 'item_add', val: 8 }] },
-      { floors: [{ type: 'enemy', val: 15 }, { type: 'enemy', val: 28 }, { type: 'chest', val: 100 }] }
-    ]
-  },
-  // Stage 3
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 8 }, { type: 'enemy', val: 6 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'enemy', val: 22 }, { type: 'enemy', val: 15 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 4 (計算の選択)
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 15 }, { type: 'item_sub', val: 5 }] },
-      { floors: [{ type: 'enemy', val: 8 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'enemy', val: 25 }, { type: 'boss', val: 50 }, { type: 'chest', val: 150 }] }
-    ]
-  },
-  // Stage 5
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 10 }, { type: 'item_add', val: 15 }, { type: 'enemy', val: 20 }] },
-      { floors: [{ type: 'enemy', val: 12 }, { type: 'item_mul', val: 2 }, { type: 'boss', val: 70 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 6
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 20 }, { type: 'item_sub', val: 10 }, { type: 'enemy', val: 8 }] },
-      { floors: [{ type: 'enemy', val: 15 }, { type: 'item_mul', val: 2 }, { type: 'enemy', val: 32 }] },
-      { floors: [{ type: 'boss', val: 80 }, { type: 'chest', val: 200 }] }
-    ]
-  },
-  // Stage 7 (トラップ回避)
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 12 }, { type: 'item_add', val: 18 }, { type: 'item_sub', val: 15 }] },
-      { floors: [{ type: 'enemy', val: 25 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'enemy', val: 70 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 8
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 15 }, { type: 'enemy', val: 10 }, { type: 'item_add', val: 25 }] },
-      { floors: [{ type: 'enemy', val: 40 }, { type: 'item_mul', val: 2 }, { type: 'enemy', val: 95 }] },
-      { floors: [{ type: 'boss', val: 170 }, { type: 'chest', val: 250 }] }
-    ]
-  },
-  // Stage 9
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 25 }, { type: 'item_sub', val: 10 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'enemy', val: 35 }, { type: 'enemy', val: 60 }, { type: 'item_add', val: 50 }] },
-      { floors: [{ type: 'boss', val: 180 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 10
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 30 }, { type: 'enemy', val: 20 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'enemy', val: 80 }, { type: 'item_sub', val: 30 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'boss', val: 300 }, { type: 'chest', val: 400 }] }
-    ]
-  },
-  // Stage 11
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 10 }, { type: 'item_mul', val: 5 }, { type: 'enemy', val: 45 }] },
-      { floors: [{ type: 'enemy', val: 90 }, { type: 'item_add', val: 100 }, { type: 'enemy', val: 180 }] },
-      { floors: [{ type: 'boss', val: 350 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 12
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 50 }, { type: 'item_sub', val: 25 }, { type: 'enemy', val: 20 }] },
-      { floors: [{ type: 'enemy', val: 40 }, { type: 'item_mul', val: 2 }, { type: 'enemy', val: 150 }] },
-      { floors: [{ type: 'enemy', val: 100 }, { type: 'item_mul', val: 3 }, { type: 'boss', val: 600 }, { type: 'chest', val: 500 }] }
-    ]
-  },
-  // Stage 13 (パズル要素強め)
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 15 }, { type: 'item_add', val: 10 }] },
-      { floors: [{ type: 'enemy', val: 22 }, { type: 'item_mul', val: 4 }] },
-      { floors: [{ type: 'enemy', val: 95 }, { type: 'item_sub', val: 50 }, { type: 'boss', val: 180 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 14
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 40 }, { type: 'enemy', val: 30 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'enemy', val: 120 }, { type: 'item_sub', val: 60 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'enemy', val: 250 }, { type: 'boss', val: 800 }, { type: 'chest', val: 600 }] }
-    ]
-  },
-  // Stage 15
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 30 }, { type: 'item_mul', val: 10 }, { type: 'item_sub', val: 100 }] },
-      { floors: [{ type: 'enemy', val: 150 }, { type: 'enemy', val: 300 }, { type: 'item_add', val: 200 }] },
-      { floors: [{ type: 'boss', val: 900 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 16
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 80 }, { type: 'item_sub', val: 40 }, { type: 'enemy', val: 35 }] },
-      { floors: [{ type: 'enemy', val: 70 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'enemy', val: 220 }, { type: 'item_sub', val: 100 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'boss', val: 800 }, { type: 'chest', val: 800 }] }
-    ]
-  },
-  // Stage 17
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 50 }, { type: 'item_add', val: 50 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'enemy', val: 180 }, { type: 'item_mul', val: 3 }] },
-      { floors: [{ type: 'enemy', val: 500 }, { type: 'boss', val: 1600 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 18
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 100 }, { type: 'item_sub', val: 50 }, { type: 'enemy', val: 40 }] },
-      { floors: [{ type: 'enemy', val: 80 }, { type: 'item_mul', val: 5 }, { type: 'item_sub', val: 200 }] },
-      { floors: [{ type: 'enemy', val: 250 }, { type: 'boss', val: 1100 }, { type: 'chest', val: 1000 }] }
-    ]
-  },
-  // Stage 19
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 60 }, { type: 'item_mul', val: 2 }, { type: 'item_add', val: 80 }] },
-      { floors: [{ type: 'enemy', val: 190 }, { type: 'item_mul', val: 3 }, { type: 'item_sub', val: 300 }] },
-      { floors: [{ type: 'enemy', val: 400 }, { type: 'boss', val: 1500 }, { type: 'princess', val: 0 }] }
-    ]
-  },
-  // Stage 20 (ラストステージ)
-  {
-    towers: [
-      { floors: [{ type: 'hero', val: 100 }, { type: 'item_sub', val: 80 }, { type: 'item_mul', val: 10 }] },
-      { floors: [{ type: 'enemy', val: 150 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 500 }] },
-      { floors: [{ type: 'enemy', val: 1000 }, { type: 'item_sub', val: 500 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'boss', val: 4000 }, { type: 'chest', val: 2000 }] }
-    ]
+// 進化段階の定義
+const getDynamicHeroClass = (classId, power) => {
+  if (classId === 'warrior') {
+    if (power >= 1000) return { name: 'ゴッドウォリアー', icon: '👑', color: 'var(--neon-gold)' };
+    if (power >= 200) return { name: 'ジェネラル', icon: '🔱', color: '#ff3c00' };
+    if (power >= 50) return { name: 'ナイト', icon: '🛡️', color: '#00e5ff' };
+    return { name: '戦士', icon: '⚔️', color: 'var(--neon-blue)' };
+  } else if (classId === 'mage') {
+    if (power >= 1000) return { name: 'ソーサラーキング', icon: '👑', color: 'var(--neon-gold)' };
+    if (power >= 200) return { name: '大賢者', icon: '🌌', color: '#bd00ff' };
+    if (power >= 50) return { name: 'ウィザード', icon: '🧙‍♂️', color: '#e500ff' };
+    return { name: '魔導士', icon: '🔮', color: '#c4a9ff' };
+  } else { // rogue
+    if (power >= 1000) return { name: 'ロイヤルシーフ', icon: '👑', color: 'var(--neon-gold)' };
+    if (power >= 200) return { name: 'シャドウハーフ', icon: '👺', color: '#ff007f' };
+    if (power >= 50) return { name: 'アサシン', icon: '🗡️', color: '#ff5c00' };
+    return { name: '冒険者', icon: '🏹', color: '#a29db5' };
   }
-];
+};
+
+// ※ STAGES 定義は game.js の下部に新ステージ定義として一括で上書きします。
 
 // ==================== 2. STATE VARIABLES ====================
 
@@ -192,7 +70,9 @@ let gameState = {
   currentStage: 0,          // 0-indexed (Stage 1 is index 0)
   unlockedStage: 0,         // どこまでアンロックされているか
   unlockedSkins: ['warrior'], // アンロック済みのスキン
-  selectedSkin: 'warrior',  // 現在選択されているスキン
+  selectedSkin: 'warrior',  // 現在選択されているスキン (互換用)
+  selectedClass: 'warrior', // 現在選択されているクラス (warrior, mage, rogue)
+  currentHeroPower: 0,      // 前ステージクリア時の引き継ぎパワー (0の場合は初期値)
   upgrades: {
     atk: 0,                 // レベル
     gold: 0                 // レベル
@@ -210,6 +90,8 @@ let gameState = {
 let activeGame = {
   mode: 'stages',           // 'stages' or 'endless'
   heroPower: 0,             // 現在のヒーローの数値
+  shield: 0,                // 現在のシールド値
+  keys: 0,                  // 現在の所持鍵数
   endlessHeight: 0,         // エンドレスモードでのクリアした高さ（タワー数）
   goldEarnedThisRun: 0,     // このプレイで獲得したゴールド
   activeLevelData: null,    // 現在生成されているタワー情報
@@ -356,18 +238,36 @@ const updateGlobalCurrencyDisplays = () => {
   document.getElementById('shop-gold-val').innerText = goldText;
   document.getElementById('achievements-gold-val').innerText = goldText;
   
-  // ホーム画面のヒーロー情報更新
-  const skin = SKINS.find(s => s.id === gameState.selectedSkin) || SKINS[0];
+  // ホーム画面のヒーロー情報（クラス選択）の更新
+  const classId = gameState.selectedClass || 'warrior';
+  const currentClass = CLASSES[classId];
+  
   const homeHeroPreview = document.getElementById('home-hero-preview');
+  const homeHeroClass = document.getElementById('home-hero-class');
   const homeHeroSprite = homeHeroPreview.querySelector('.hero-character-sprite');
   const homeHeroAtkVal = document.getElementById('home-hero-atk');
+  const classDescText = document.getElementById('class-desc-text');
   
-  homeHeroSprite.innerText = skin.icon;
-  homeHeroPreview.style.borderColor = skin.color;
-  homeHeroPreview.style.boxShadow = `0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px ${skin.color}aa`;
+  // 初期攻撃力 ＝ クラス基本値 ＋ アップグレード分
+  const baseAtk = currentClass.baseAtk + gameState.upgrades.atk * 5;
+  // 引き継ぎパワーがある場合はそれを優先表示
+  const displayPower = (gameState.currentHeroPower > 0) ? gameState.currentHeroPower : baseAtk;
   
-  const startingPower = 10 + gameState.upgrades.atk * 5;
-  homeHeroAtkVal.innerText = startingPower;
+  if (homeHeroClass) homeHeroClass.innerText = currentClass.name;
+  if (homeHeroSprite) homeHeroSprite.innerText = currentClass.icon;
+  if (homeHeroAtkVal) homeHeroAtkVal.innerText = displayPower;
+  if (classDescText) classDescText.innerText = currentClass.desc;
+  
+  // クラスのテーマカラーに応じたボーダーや影の設定
+  const classVisual = getDynamicHeroClass(classId, displayPower);
+  homeHeroPreview.style.borderColor = classVisual.color;
+  homeHeroPreview.style.boxShadow = `0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px ${classVisual.color}aa`;
+  
+  // プレイ中画面のシールドと鍵数の表示更新
+  const shieldValEl = document.getElementById('game-shield-val');
+  const keysValEl = document.getElementById('game-keys-val');
+  if (shieldValEl) shieldValEl.innerText = activeGame.shield;
+  if (keysValEl) keysValEl.innerText = activeGame.keys;
 };
 
 // ==================== 6. SCREEN NAVIGATION ====================
@@ -464,6 +364,31 @@ const setupNavigation = () => {
       window.location.href = '../index.html';
     });
   }
+
+  // クラス切り替え処理
+  const btnPrev = document.getElementById('btn-prev-class');
+  const btnNext = document.getElementById('btn-next-class');
+  if (btnPrev && btnNext) {
+    btnPrev.addEventListener('click', () => {
+      let currentIdx = CLASS_LIST.indexOf(gameState.selectedClass);
+      currentIdx = (currentIdx - 1 + CLASS_LIST.length) % CLASS_LIST.length;
+      gameState.selectedClass = CLASS_LIST[currentIdx];
+      // クラス変更時は前ステージからの引き継ぎ値をリセット
+      gameState.currentHeroPower = 0;
+      saveGame();
+      updateGlobalCurrencyDisplays();
+      window.sounds.playSelect();
+    });
+    btnNext.addEventListener('click', () => {
+      let currentIdx = CLASS_LIST.indexOf(gameState.selectedClass);
+      currentIdx = (currentIdx + 1) % CLASS_LIST.length;
+      gameState.selectedClass = CLASS_LIST[currentIdx];
+      gameState.currentHeroPower = 0;
+      saveGame();
+      updateGlobalCurrencyDisplays();
+      window.sounds.playSelect();
+    });
+  }
 };
 
 // ==================== 7. STAGE SELECT RENDERING ====================
@@ -509,22 +434,28 @@ const startStage = (stageIdx) => {
   activeGame.activeStageIdx = stageIdx;
   activeGame.goldEarnedThisRun = 0;
   
+  // 探索ステータス（シールド、鍵）をリセット
+  activeGame.shield = 0;
+  activeGame.keys = 0;
+  
   // レベルデータのロード
   const levelData = cloneObject(STAGES[stageIdx]);
   activeGame.activeLevelData = levelData;
   
-  // ステージデータからヒーローの基本数値を読み込む（無い場合はデフォルト10）
-  let basePower = 10;
-  levelData.towers.forEach(tower => {
-    tower.floors.forEach(floor => {
-      if (floor.type === 'hero') {
-        basePower = floor.val || 10;
-      }
-    });
-  });
+  // 選択中のクラス
+  const classId = gameState.selectedClass || 'warrior';
+  const currentClass = CLASSES[classId];
   
-  // 初期パワー ＝ ステージ固有の基本値 ＋ アップグレード分
-  const startingPower = basePower + gameState.upgrades.atk * 5;
+  // 最低保証パワー ＝ クラスの基本攻撃力 ＋ アップグレード分
+  const guaranteedPower = currentClass.baseAtk + gameState.upgrades.atk * 5;
+  
+  // ステージ1 (index 0) 以外の時のみ、引き継ぎパワーを適用する
+  let startingPower = guaranteedPower;
+  if (stageIdx > 0 && gameState.currentHeroPower > 0) {
+    // 前ステージクリア時のパワーを引き継ぐが、最低保証値は維持する
+    startingPower = Math.max(guaranteedPower, gameState.currentHeroPower);
+  }
+  
   activeGame.heroPower = startingPower;
   activeGame.maxPowerThisRun = startingPower;
   
@@ -542,7 +473,13 @@ const startEndlessGame = () => {
   activeGame.endlessHeight = 0;
   activeGame.goldEarnedThisRun = 0;
   
-  const startingPower = 10 + gameState.upgrades.atk * 5;
+  // 探索ステータスをリセット
+  activeGame.shield = 0;
+  activeGame.keys = 0;
+  
+  const classId = gameState.selectedClass || 'warrior';
+  const currentClass = CLASSES[classId];
+  const startingPower = currentClass.baseAtk + gameState.upgrades.atk * 5;
   activeGame.heroPower = startingPower;
   activeGame.maxPowerThisRun = startingPower;
   
@@ -718,10 +655,11 @@ const createEntityDOM = (data, tIdx, fIdx) => {
     case 'hero':
       el.classList.add('entity-hero');
       el.id = 'hero-character';
-      const skin = SKINS.find(s => s.id === gameState.selectedSkin) || SKINS[0];
-      iconEl.innerText = skin.icon;
-      el.style.borderColor = skin.color;
-      el.style.boxShadow = `0 0 12px ${skin.color}aa, inset 0 0 8px ${skin.color}55`;
+      const classId = gameState.selectedClass || 'warrior';
+      const classVisual = getDynamicHeroClass(classId, activeGame.heroPower);
+      iconEl.innerText = classVisual.icon;
+      el.style.borderColor = classVisual.color;
+      el.style.boxShadow = `0 0 12px ${classVisual.color}aa, inset 0 0 8px ${classVisual.color}55`;
       valEl.innerText = activeGame.heroPower;
       break;
       
@@ -739,7 +677,7 @@ const createEntityDOM = (data, tIdx, fIdx) => {
       
     case 'item_add':
       el.classList.add('entity-item');
-      iconEl.innerText = '🗡️'; // 剣のアイコン
+      iconEl.innerText = '🍎'; // パワーアップ果実
       valEl.innerText = `+${data.val}`;
       break;
       
@@ -753,6 +691,39 @@ const createEntityDOM = (data, tIdx, fIdx) => {
       el.classList.add('entity-enemy'); // トラップは赤色ネオン
       iconEl.innerText = '⚙️'; // トラップの歯車
       valEl.innerText = `-${data.val}`;
+      break;
+      
+    case 'item_sword':
+      el.classList.add('entity-item');
+      iconEl.innerText = '⚔️'; // 伝説の剣
+      valEl.innerText = `+${data.val}`;
+      break;
+      
+    case 'item_shield':
+      el.classList.add('entity-item', 'entity-item-multiply'); // 水色ネオン調
+      iconEl.innerText = '🛡️'; // シールド
+      valEl.innerText = `+${data.val}`;
+      break;
+      
+    case 'item_key':
+      el.classList.add('entity-item', 'entity-item-multiply');
+      iconEl.innerText = '🔑'; // 鍵
+      valEl.innerText = '';
+      break;
+      
+    case 'locked_gate':
+      el.classList.add('entity-locked-gate');
+      iconEl.innerText = '🔒'; // 鍵付き扉
+      valEl.innerText = '';
+      break;
+
+    case 'wall':
+      el.classList.add('entity-wall');
+      el.style.background = '#0d0b18';
+      el.style.borderColor = 'rgba(255,255,255,0.03)';
+      el.style.boxShadow = 'none';
+      iconEl.innerText = '🧱';
+      valEl.innerText = '';
       break;
       
     case 'princess':
@@ -776,7 +747,7 @@ const createEntityDOM = (data, tIdx, fIdx) => {
 // 敵の強さに応じた絵文字の自動切り替え
 const getEnemyIcon = (val) => {
   if (val < 15) return '💀';      // スケルトン
-  if (val < 40) return 'Goblin';  // ゴブリン(実際は絵文字👺/🧟)
+  if (val < 40) return '👺';      // 天狗/ゴブリン
   if (val < 100) return '🧟';     // ゾンビ
   if (val < 250) return '🐺';     // ワーウルフ
   return '🧛';                    // ヴァンパイア
@@ -1044,23 +1015,29 @@ const clearRoomHovers = () => {
 
 // 移動可能かどうかのバリデーション
 const isValidMove = (targetTowerIdx, targetFloorIdx, floorData) => {
+  const sTower = activeGame.heroPosition.towerIdx;
+  const sFloor = activeGame.heroPosition.floorIdx;
+
   // ヒーロー自身がいる部屋には移動できない
-  if (targetTowerIdx === activeGame.heroPosition.towerIdx && targetFloorIdx === activeGame.heroPosition.floorIdx) {
+  if (targetTowerIdx === sTower && targetFloorIdx === sFloor) {
     return false;
   }
   
-  // 部屋が空っぽ、もしくはクリア済みの部屋には移動できない（意味がないため）
-  if (!floorData || floorData.type === 'empty' || floorData.type === 'hero') {
+  if (!floorData || floorData.type === 'wall') {
     return false;
   }
-  
-  // ルール: 対象の部屋より下にある全ての部屋が「empty（クリア済み）」または「ヒーローがいる部屋（自身の元の位置）」である必要がある
-  const tower = activeGame.activeLevelData.towers[targetTowerIdx];
-  for (let i = 0; i < targetFloorIdx; i++) {
-    const type = tower.floors[i].type;
-    if (type !== 'empty' && type !== 'hero') {
-      return false; // 下の階に未クリアのものがあるため、まだ登れない
-    }
+
+  // ルール: 隣接する上下左右の部屋（マンハッタン距離が1）のみ移動可能
+  const isAdjacent = (Math.abs(targetTowerIdx - sTower) === 1 && targetFloorIdx === sFloor) ||
+                     (Math.abs(targetFloorIdx - sFloor) === 1 && targetTowerIdx === sTower);
+
+  if (!isAdjacent) {
+    return false;
+  }
+
+  // ロックされた扉の場合、鍵を持っていないと進入できない
+  if (floorData.type === 'locked_gate' && activeGame.keys <= 0) {
+    return false;
   }
   
   return true;
@@ -1075,7 +1052,6 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
   const sourceFloorIdx = activeGame.heroPosition.floorIdx;
   
   const roomEl = document.querySelector(`.room[data-tower-idx="${targetTowerIdx}"][data-floor-idx="${targetFloorIdx}"]`);
-  const heroRoomEl = document.querySelector(`.room[data-tower-idx="${sourceTowerIdx}"][data-floor-idx="${sourceFloorIdx}"]`);
   
   // アニメーション方向（ヒーローが右へ行くか左へ行くか）
   const directionClass = targetTowerIdx >= sourceTowerIdx ? 'combat-attack-right' : 'combat-attack-left';
@@ -1110,12 +1086,14 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
     let goldEarned = 0;
     
     const initialPower = activeGame.heroPower;
+    const classId = gameState.selectedClass || 'warrior';
     
     switch (targetFloor.type) {
       case 'enemy':
       case 'boss':
+        // 勝利判定：通常攻撃力、または（攻撃力＋シールド）が敵以上であること
         if (activeGame.heroPower >= targetFloor.val) {
-          // 勝利！敵の数値を吸収する
+          // 通常勝利！敵の数値を吸収する
           activeGame.heroPower += targetFloor.val;
           powerChangeText = `+${targetFloor.val}`;
           powerChangeType = 'float-add';
@@ -1125,6 +1103,21 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
           let enemyGold = Math.round(targetFloor.val * 0.5);
           if (targetFloor.type === 'boss') enemyGold = targetFloor.val * 2;
           goldEarned = applyGoldBonus(enemyGold);
+        } else if (activeGame.heroPower + activeGame.shield >= targetFloor.val) {
+          // シールドを消費して勝利！
+          const shieldDamage = targetFloor.val - activeGame.heroPower;
+          activeGame.shield -= shieldDamage;
+          activeGame.heroPower += targetFloor.val; // 吸収加算
+          
+          powerChangeText = `+${targetFloor.val} (🛡️-${shieldDamage})`;
+          powerChangeType = 'float-add';
+          gameState.stats.totalDefeats++;
+          
+          let enemyGold = Math.round(targetFloor.val * 0.5);
+          if (targetFloor.type === 'boss') enemyGold = targetFloor.val * 2;
+          goldEarned = applyGoldBonus(enemyGold);
+          
+          window.sounds.playUpgrade(); // 防御成功時の効果音
         } else {
           // 敗北！ゲームオーバー
           isGameOver = true;
@@ -1139,8 +1132,10 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
         break;
         
       case 'item_mul':
-        activeGame.heroPower *= targetFloor.val;
-        powerChangeText = `x${targetFloor.val}`;
+        // 魔導士クラスの場合は乗算ボーナス (+1)
+        const mulVal = (classId === 'mage') ? (targetFloor.val + 1) : targetFloor.val;
+        activeGame.heroPower *= mulVal;
+        powerChangeText = `x${mulVal}`;
         powerChangeType = 'float-mult';
         window.sounds.playUpgrade();
         break;
@@ -1153,6 +1148,38 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
           activeGame.heroPower = 0;
           isGameOver = true;
         }
+        break;
+
+      case 'item_sword':
+        // 伝説の剣：パワー大幅アップ
+        activeGame.heroPower += targetFloor.val;
+        powerChangeText = `⚔️ +${targetFloor.val}`;
+        powerChangeType = 'float-add';
+        window.sounds.playUpgrade();
+        break;
+
+      case 'item_shield':
+        // イージスの盾：シールド追加
+        activeGame.shield += targetFloor.val;
+        powerChangeText = `🛡️ +${targetFloor.val}`;
+        powerChangeType = 'float-mult'; // 水色/緑系エフェクト
+        window.sounds.playUpgrade();
+        break;
+
+      case 'item_key':
+        // 鍵：鍵の獲得
+        activeGame.keys++;
+        powerChangeText = `🔑 GET!`;
+        powerChangeType = 'float-mult';
+        window.sounds.playUpgrade();
+        break;
+
+      case 'locked_gate':
+        // ロックされた扉：進入時に鍵を消費
+        activeGame.keys--;
+        powerChangeText = `🔑 UNLOCKED`;
+        powerChangeType = 'float-add';
+        window.sounds.playUpgrade();
         break;
         
       case 'princess':
@@ -1187,10 +1214,18 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
       createFloatingText(roomEl, powerChangeText, powerChangeType);
     }
     
-    // UI反映（ヒーロー数値更新）
+    // UI反映
+    updateGlobalCurrencyDisplays();
     if (heroEl) {
       const valEl = heroEl.querySelector('.entity-val');
       if (valEl) valEl.innerText = activeGame.heroPower;
+    }
+
+    // 進化チェック
+    const prevClassVisual = getDynamicHeroClass(classId, initialPower);
+    const nextClassVisual = getDynamicHeroClass(classId, activeGame.heroPower);
+    if (prevClassVisual.name !== nextClassVisual.name) {
+      triggerEvolution(prevClassVisual, nextClassVisual);
     }
     
     setTimeout(() => {
@@ -1203,7 +1238,7 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
       } else if (isStageClear) {
         handleStageClear();
       } else {
-        // 残りの敵がいるか確認（もし全てemptyで、ゴールが存在しないステージの場合は全滅でクリア）
+        // 残りの敵がいるか確認
         checkAutoClearCondition();
       }
     }, 200);
@@ -1211,10 +1246,43 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
   }, 200);
 };
 
-// ゴールドボーナスの適用計算
+// 進化ポップアップのトリガー演出
+const triggerEvolution = (prev, next) => {
+  const overlay = document.getElementById('evolution-overlay');
+  const prevIcon = document.getElementById('evo-prev-icon');
+  const nextIcon = document.getElementById('evo-next-icon');
+  const classNameEl = document.getElementById('evo-class-name');
+  
+  if (prevIcon) prevIcon.innerText = prev.icon;
+  if (nextIcon) {
+    nextIcon.innerText = next.icon;
+    nextIcon.style.color = next.color;
+    nextIcon.style.textShadow = `0 0 15px ${next.color}`;
+  }
+  if (classNameEl) {
+    classNameEl.innerText = next.name;
+    classNameEl.style.color = next.color;
+  }
+  
+  window.sounds.playWin(); // 進化時の効果音
+  if (overlay) {
+    overlay.classList.add('active');
+    setTimeout(() => {
+      overlay.classList.remove('active');
+      // ヒーローの見た目を即座に更新するためにタワーUIを再描画
+      generateTowerUI(activeGame.activeLevelData);
+    }, 1200);
+  }
+};
+
 const applyGoldBonus = (baseGold) => {
   const bonusPercent = gameState.upgrades.gold * 15;
-  return Math.round(baseGold * (1 + bonusPercent / 100));
+  let gold = Math.round(baseGold * (1 + bonusPercent / 100));
+  // 冒険者(rogue)クラスは獲得ゴールド+20%
+  if (gameState.selectedClass === 'rogue') {
+    gold = Math.round(gold * 1.2);
+  }
+  return gold;
 };
 
 // フローティングテキスト生成
@@ -1275,6 +1343,9 @@ const handleStageClear = () => {
     activeGame.goldEarnedThisRun += actualReward;
     gameState.gold += actualReward;
     gameState.stats.totalGold += actualReward;
+    
+    // ステータスを次のステージに引き継ぐためにセーブ
+    gameState.currentHeroPower = activeGame.heroPower;
     
     saveGame();
     
@@ -1394,73 +1465,13 @@ const renderShop = () => {
     }
   });
   
-  // 2. スキン一覧の描画
+  // 2. スキン一覧の非表示化（クラス選択制へ移行したため）
   const skinsContainer = document.getElementById('skins-container');
-  skinsContainer.innerHTML = '';
-  
-  SKINS.forEach(skin => {
-    const card = document.createElement('div');
-    card.classList.add('skin-card');
-    if (gameState.selectedSkin === skin.id) {
-      card.classList.add('selected');
-    }
-    
-    const isOwned = gameState.unlockedSkins.includes(skin.id);
-    const isEquipped = gameState.selectedSkin === skin.id;
-    
-    let badgeHTML = '';
-    if (isEquipped) {
-      badgeHTML = '<span class="skin-badge-selected">装備中</span>';
-    }
-    
-    let actionBtnHTML = '';
-    if (isEquipped) {
-      actionBtnHTML = '<button class="btn-skin-buy owned" disabled>選択中</button>';
-    } else if (isOwned) {
-      actionBtnHTML = `<button class="btn-skin-buy owned btn-select-skin" data-id="${skin.id}">装備する</button>`;
-    } else {
-      const canBuy = gameState.gold >= skin.cost;
-      const disabledClass = canBuy ? 'buyable' : 'locked';
-      const disabledAttr = canBuy ? '' : 'disabled';
-      actionBtnHTML = `<button class="btn-skin-buy ${disabledClass} btn-buy-skin" data-id="${skin.id}" data-cost="${skin.cost}" ${disabledAttr}>${skin.cost} <i class="fas fa-coins"></i></button>`;
-    }
-    
-    card.innerHTML = `
-      ${badgeHTML}
-      <div class="skin-sprite" style="color: ${skin.color}; text-shadow: 0 0 10px ${skin.color}aa">${skin.icon}</div>
-      <div class="skin-name">${skin.name}</div>
-      ${actionBtnHTML}
-    `;
-    
-    skinsContainer.appendChild(card);
-  });
-  
-  // スキン購入イベント
-  document.querySelectorAll('.btn-buy-skin').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const id = btn.dataset.id;
-      const cost = parseInt(btn.dataset.cost);
-      if (gameState.gold >= cost) {
-        gameState.gold -= cost;
-        gameState.unlockedSkins.push(id);
-        gameState.selectedSkin = id;
-        window.sounds.playUpgrade();
-        saveGame();
-        renderShop();
-      }
-    });
-  });
-  
-  // スキン選択イベント
-  document.querySelectorAll('.btn-select-skin').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      const id = btn.dataset.id;
-      gameState.selectedSkin = id;
-      window.sounds.playSelect();
-      saveGame();
-      renderShop();
-    });
-  });
+  if (skinsContainer) {
+    skinsContainer.innerHTML = '';
+    const skinsSection = skinsContainer.closest('.shop-section');
+    if (skinsSection) skinsSection.style.display = 'none';
+  }
 };
 
 // ==================== 12. ACHIEVEMENTS LOGIC ====================
@@ -1600,3 +1611,176 @@ window.addEventListener('DOMContentLoaded', () => {
   // 5. バックグラウンド実績の初期チェック
   checkAchievements();
 });
+
+// ==================== 14. STAGE DEFINITIONS (GRID DUNGEONS) ====================
+// 各タワー(towers)のフロア(floors)を下から積み上げ、2Dグリッドダンジョン(X: タワー, Y: フロア)として構成
+const STAGES = [
+  // Stage 1: 移動と戦闘の基本 (3x2)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 5 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'enemy', val: 12 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 2: シールドの盾と強敵 (3x2)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 15 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'enemy', val: 25 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'chest', val: 100 }] }
+    ]
+  },
+  // Stage 3: 黄金の鍵と閉じられた扉 (3x3)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_key', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 15 }] },
+      { floors: [{ type: 'locked_gate', val: 0 }, { type: 'enemy', val: 20 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 4: 迷路の通路と計算の選択 (3x3)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_add', val: 8 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 18 }, { type: 'item_mul', val: 2 }] },
+      { floors: [{ type: 'chest', val: 150 }, { type: 'enemy', val: 40 }, { type: 'wall', val: 0 }] }
+    ]
+  },
+  // Stage 5: 鍵回収とシールド防衛 (3x3)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 12 }, { type: 'item_shield', val: 20 }, { type: 'enemy', val: 45 }] },
+      { floors: [{ type: 'locked_gate', val: 0 }, { type: 'boss', val: 65 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 6: 二者択一のトラップと近道 (3x3)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sub', val: 5 }, { type: 'enemy', val: 15 }] },
+      { floors: [{ type: 'item_add', val: 15 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 30 }] },
+      { floors: [{ type: 'enemy', val: 20 }, { type: 'item_mul', val: 2 }, { type: 'chest', val: 200 }] }
+    ]
+  },
+  // Stage 7: トリプルタワー迷宮 (3x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 10 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 22 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'item_shield', val: 30 }, { type: 'enemy', val: 50 }, { type: 'item_mul', val: 2 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 8: 伝説の剣とシールド収集 (3x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sword', val: 35 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 80 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 45 }, { type: 'item_shield', val: 25 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 120 }, { type: 'chest', val: 300 }] }
+    ]
+  },
+  // Stage 9: 分岐路とロックゲート (4x3)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 15 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 35 }, { type: 'item_shield', val: 30 }, { type: 'enemy', val: 85 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_mul', val: 3 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 10: 左右の駆け引き (4x3)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 40 }, { type: 'enemy', val: 110 }] },
+      { floors: [{ type: 'enemy', val: 20 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_add', val: 50 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 180 }, { type: 'chest', val: 400 }] }
+    ]
+  },
+  // Stage 11: ループする回廊 (3x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 25 }, { type: 'item_shield', val: 50 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 120 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 60 }, { type: 'item_mul', val: 2 }, { type: 'boss', val: 280 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 12: 双子の塔と鍵の連鎖 (4x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 30 }, { type: 'locked_gate', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 75 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 220 }] },
+      { floors: [{ type: 'item_shield', val: 60 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 180 }, { type: 'chest', val: 500 }] }
+    ]
+  },
+  // Stage 13: 剣の聖域 (3x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_shield', val: 40 }, { type: 'boss', val: 300 }] },
+      { floors: [{ type: 'enemy', val: 35 }, { type: 'item_sword', val: 100 }, { type: 'enemy', val: 140 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 90 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 14: 防衛戦線 (4x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 80 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 40 }, { type: 'enemy', val: 150 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 260 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 350 }] },
+      { floors: [{ type: 'item_mul', val: 2 }, { type: 'item_add', val: 80 }, { type: 'boss', val: 600 }, { type: 'chest', val: 600 }] }
+    ]
+  },
+  // Stage 15: 呪われた迷宮 (3x5)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sub', val: 20 }, { type: 'enemy', val: 60 }, { type: 'item_shield', val: 50 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 200 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 50 }, { type: 'item_mul', val: 4 }, { type: 'enemy', val: 150 }, { type: 'boss', val: 750 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 16: 四角い大部屋 (4x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 50 }, { type: 'item_shield', val: 60 }, { type: 'item_key', val: 0 }] },
+      { floors: [{ type: 'item_add', val: 70 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 120 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 400 }] },
+      { floors: [{ type: 'item_mul', val: 3 }, { type: 'enemy', val: 250 }, { type: 'boss', val: 900 }, { type: 'chest', val: 800 }] }
+    ]
+  },
+  // Stage 17: ロック連鎖迷宮 (4x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'locked_gate', val: 0 }, { type: 'enemy', val: 80 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'item_key', val: 0 }] },
+      { floors: [{ type: 'item_mul', val: 2 }, { type: 'enemy', val: 300 }, { type: 'locked_gate', val: 0 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 18: 最強の盾と天をも穿つ魔塔 (3x5)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 150 }, { type: 'enemy', val: 180 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_mul', val: 4 }, { type: 'enemy', val: 800 }] },
+      { floors: [{ type: 'enemy', val: 100 }, { type: 'item_sword', val: 200 }, { type: 'enemy', val: 500 }, { type: 'boss', val: 1400 }, { type: 'chest', val: 1000 }] }
+    ]
+  },
+  // Stage 19: 運命の試練 (4x4)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sub', val: 100 }, { type: 'item_shield', val: 200 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 450 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'enemy', val: 120 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 600 }, { type: 'boss', val: 1800 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_add', val: 150 }, { type: 'enemy', val: 900 }, { type: 'princess', val: 0 }] }
+    ]
+  },
+  // Stage 20: 最後の試練「ゴッド・オブルイン」 (4x5)
+  {
+    towers: [
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sword', val: 300 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'enemy', val: 200 }, { type: 'item_shield', val: 300 }, { type: 'locked_gate', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 800 }, { type: 'enemy', val: 1500 }, { type: 'locked_gate', val: 0 }] },
+      { floors: [{ type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 1200 }, { type: 'boss', val: 5000 }, { type: 'chest', val: 3000 }] }
+    ]
+  }
+];

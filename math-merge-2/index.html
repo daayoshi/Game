@@ -34,11 +34,17 @@
             </div>
             
             <div class="hero-preview-container">
+                <button id="btn-prev-class" class="class-nav-btn" aria-label="前のクラス"><i class="fas fa-chevron-left"></i></button>
                 <!-- A dynamic CSS hero representation in 3D-like hover -->
                 <div class="hero-card-preview" id="home-hero-preview">
-                    <div class="hero-character-sprite">⚡</div>
+                    <div class="hero-class-name" id="home-hero-class">戦士</div>
+                    <div class="hero-character-sprite">⚔️</div>
                     <div class="hero-power-badge">ATK: <span id="home-hero-atk">10</span></div>
                 </div>
+                <button id="btn-next-class" class="class-nav-btn" aria-label="次のクラス"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="class-desc-container">
+                <p id="class-desc-text">初期攻撃力が高めの、王道物理アタッカー。</p>
             </div>
 
             <div class="menu-buttons">
@@ -96,6 +102,18 @@
                     <span id="game-level-title">STAGE 1</span>
                     <div class="endless-height-info hide">
                         <i class="fas fa-arrow-up"></i> <span id="endless-height-val">0</span> F
+                    </div>
+                </div>
+
+                <!-- 探索ステータス（シールド値と鍵数） -->
+                <div class="quest-status-displays">
+                    <div class="status-indicator shield-indicator">
+                        <i class="fas fa-shield-alt text-cyan"></i>
+                        <span id="game-shield-val">0</span>
+                    </div>
+                    <div class="status-indicator keys-indicator">
+                        <i class="fas fa-key text-gold"></i>
+                        <span id="game-keys-val">0</span>
                     </div>
                 </div>
                 <div class="game-header-actions">
@@ -233,6 +251,20 @@
 
     <!-- Screen Transition Overlay (For slick fade transitions) -->
     <div id="screen-transition"></div>
+
+    <!-- Evolution Overlay (Fades in/out quickly) -->
+    <div id="evolution-overlay" class="overlay">
+        <div class="overlay-card glass" style="max-width: 380px; text-align: center; border-color: var(--neon-gold); box-shadow: 0 0 25px rgba(255, 215, 0, 0.2);">
+            <div class="overlay-icon text-gold" style="animation: pulseEffect 1.5s infinite alternate ease-in-out;"><i class="fas fa-arrow-up"></i></div>
+            <h2 class="overlay-title" style="color: var(--neon-gold); text-shadow: 0 0 10px rgba(255, 215, 0, 0.4);">CLASS EVOLVED!</h2>
+            <div class="evo-visual" style="display: flex; justify-content: center; align-items: center; gap: 20px; margin: 20px 0; font-size: 2.5rem;">
+                <span id="evo-prev-icon" style="filter: grayscale(0.5);">⚔️</span>
+                <i class="fas fa-long-arrow-alt-right" style="color: #5d5a71; font-size: 1.5rem;"></i>
+                <span id="evo-next-icon" style="animation: pulseEffect 0.8s infinite alternate ease-in-out;">🛡️</span>
+            </div>
+            <p class="overlay-desc" style="font-size: 1rem; color: #ffffff;">ヒーローが <span id="evo-class-name" style="font-weight: 800; color: var(--neon-gold); text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);">ナイト</span> に進化した！</p>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="sound.js"></script>

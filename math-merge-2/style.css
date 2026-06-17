@@ -1318,3 +1318,125 @@ body {
     0% { border-color: rgba(0, 229, 255, 0.3) !important; box-shadow: inset 0 0 8px rgba(0, 229, 255, 0.05) !important; }
     100% { border-color: rgba(0, 229, 255, 0.8) !important; box-shadow: inset 0 0 15px rgba(0, 229, 255, 0.25) !important; }
 }
+
+/* ==================== MTQ2 ADDITIONAL STYLES ==================== */
+
+/* Class Selection UI */
+.hero-preview-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    width: 100%;
+    margin-bottom: 5px;
+}
+
+.class-nav-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.class-nav-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.class-nav-btn:active {
+    transform: scale(0.95);
+}
+
+.hero-class-name {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    text-shadow: 0 0 5px rgba(255,255,255,0.1);
+}
+
+.class-desc-container {
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 8px 16px;
+    max-width: 300px;
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.class-desc-container p {
+    font-size: 0.8rem;
+    color: #a29db5;
+    line-height: 1.4;
+}
+
+/* Quest Status Header Displays */
+.quest-status-displays {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 6px 14px;
+    border-radius: 16px;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 800;
+}
+
+.status-indicator i {
+    font-size: 1.05rem;
+    filter: drop-shadow(0 0 5px currentColor);
+}
+
+.text-cyan {
+    color: #00e5ff;
+}
+
+/* Locked Gate Entity Styling */
+.entity-locked-gate {
+    background: linear-gradient(135deg, rgba(255, 0, 80, 0.1) 0%, rgba(139, 0, 0, 0.25) 100%) !important;
+    border: 2px solid #ff0055 !important;
+    box-shadow: 0 0 12px rgba(255, 0, 85, 0.35) !important;
+    color: #ff0055 !important;
+    cursor: default;
+}
+
+.entity-locked-gate .entity-val {
+    border: 1px solid #ff0055 !important;
+    color: #ff0055 !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Evolution Animation & Effects */
+.evo-visual span {
+    display: inline-block;
+    font-size: 3rem;
+    filter: drop-shadow(0 0 10px rgba(255,215,0,0.5));
+}
+
+.evo-arrow {
+    animation: arrowPulse 1s infinite alternate ease-in-out;
+}
+
+@keyframes arrowPulse {
+    0% { transform: translateX(0); opacity: 0.5; }
+    100% { transform: translateX(8px); opacity: 1; }
+}
