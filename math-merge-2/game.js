@@ -49,25 +49,59 @@ const ACHIEVEMENTS = [
   { id: 'endless_50', title: '無限の挑戦者', desc: 'エンドレスモードで50階以上に到達する', target: 50, type: 'endless', reward: 800 }
 ];
 
-// 進化段階の定義
-const getDynamicHeroClass = (classId, power) => {
+// 進化段階の定義（ティア 0〜3）
+const getHeroTier = (classId, power) => {
+  if (power >= 1000) return 3;
+  if (power >= 200) return 2;
+  if (power >= 50) return 1;
+  return 0;
+};
+
+const getHeroClassByTier = (classId, tier) => {
   if (classId === 'warrior') {
-    if (power >= 1000) return { name: 'ゴッドウォリアー', icon: '👑', color: 'var(--neon-gold)' };
-    if (power >= 200) return { name: 'ジェネラル', icon: '🔱', color: '#ff3c00' };
-    if (power >= 50) return { name: 'ナイト', icon: '🛡️', color: '#00e5ff' };
-    return { name: '戦士', icon: '⚔️', color: 'var(--neon-blue)' };
+    const tbl = [
+      { name: '戦士',         icon: '⚔️',  color: 'var(--neon-blue)' },
+      { name: 'ナイト',       icon: '🛡️', color: '#00e5ff' },
+      { name: 'ジェネラル',   icon: '🔱',  color: '#ff3c00' },
+      { name: 'ゴッドウォリアー', icon: '👑', color: 'var(--neon-gold)' },
+    ];
+    return tbl[Math.min(tier, 3)];
   } else if (classId === 'mage') {
-    if (power >= 1000) return { name: 'ソーサラーキング', icon: '👑', color: 'var(--neon-gold)' };
-    if (power >= 200) return { name: '大賢者', icon: '🌌', color: '#bd00ff' };
-    if (power >= 50) return { name: 'ウィザード', icon: '🧙‍♂️', color: '#e500ff' };
-    return { name: '魔導士', icon: '🔮', color: '#c4a9ff' };
+    const tbl = [
+      { name: '魔導士',       icon: '🔮',  color: '#c4a9ff' },
+      { name: 'ウィザード',   icon: '🧙‍♂️', color: '#e500ff' },
+      { name: '大賢者',       icon: '🌌',  color: '#bd00ff' },
+      { name: 'ソーサラーキング', icon: '👑', color: 'var(--neon-gold)' },
+    ];
+    return tbl[Math.min(tier, 3)];
   } else { // rogue
-    if (power >= 1000) return { name: 'ロイヤルシーフ', icon: '👑', color: 'var(--neon-gold)' };
-    if (power >= 200) return { name: 'シャドウハーフ', icon: '👺', color: '#ff007f' };
-    if (power >= 50) return { name: 'アサシン', icon: '🗡️', color: '#ff5c00' };
-    return { name: '冒険者', icon: '🏹', color: '#a29db5' };
+    const tbl = [
+      { name: '冒険者',       icon: '🏹',  color: '#a29db5' },
+      { name: 'アサシン',     icon: '🗡️', color: '#ff5c00' },
+      { name: 'シャドウハーフ', icon: '👺', color: '#ff007f' },
+      { name: 'ロイヤルシーフ', icon: '👑', color: 'var(--neon-gold)' },
+    ];
+    return tbl[Math.min(tier, 3)];
   }
 };
+
+// パワーとmaxEvoTierを考慮してクラスビジュアルを取得（退化しない）
+const getDynamicHeroClass = (classId, power) => {
+  const tier = getHeroTier(classId, power);
+  // activeGame が存在する場合は最高ティア以下に下がらない
+  const maxTier = (typeof activeGame !== 'undefined' && activeGame.maxEvoTier != null)
+    ? activeGame.maxEvoTier
+    : 0;
+  return getHeroClassByTier(classId, Math.max(tier, maxTier));
+};
+
+// 進化ボーナスの定義（ティア別）
+const EVO_BONUS = [
+  null,                                          // tier 0→1: ボーナスなし（初回はないので未使用）
+  { label: '⚡ 進化ボーナス！ シールド+20', shieldBonus: 20, powerBonus: 0 },    // tier 0→1
+  { label: '💥 進化ボーナス！ パワー+30%', shieldBonus: 0,  powerBonus: 0.3 }, // tier 1→2
+  { label: '🌟 進化ボーナス！ シールド+50 & パワー+50%', shieldBonus: 50, powerBonus: 0.5 }, // tier 2→3
+];
 
 // ※ STAGES 定義は game.js の下部に新ステージ定義として一括で上書きします。
 
@@ -110,7 +144,8 @@ let activeGame = {
   goldEarnedThisRun: 0,     // このプレイで獲得したゴールド
   activeLevelData: null,    // 現在生成されているタワー情報
   heroPosition: { towerIdx: 0, floorIdx: 0 },
-  maxPowerThisRun: 0
+  maxPowerThisRun: 0,
+  maxEvoTier: 0             // このプレイ中に到達した最高進化ティア（退化防止用）
 };
 
 // ドラッグ＆ドロップ用の一時データ
@@ -489,6 +524,7 @@ const startStage = (stageIdx) => {
   
   activeGame.heroPower = startingPower;
   activeGame.maxPowerThisRun = startingPower;
+  activeGame.maxEvoTier = 0; // 進化ティアをリセット
   
   // UIタイトル
   document.getElementById('game-level-title').innerText = `STAGE ${stageIdx + 1}`;
@@ -514,6 +550,7 @@ const startEndlessGame = () => {
   const startingPower = currentClass.baseAtk + gameState.upgrades.atk * 5;
   activeGame.heroPower = startingPower;
   activeGame.maxPowerThisRun = startingPower;
+  activeGame.maxEvoTier = 0; // 進化ティアをリセット
   
   // エンドレス用の初期タワー生成
   generateNextEndlessTower();
@@ -1421,11 +1458,21 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
       if (valEl) valEl.innerText = activeGame.heroPower;
     }
 
-    // 進化チェック
-    const prevClassVisual = getDynamicHeroClass(classId, initialPower);
-    const nextClassVisual = getDynamicHeroClass(classId, activeGame.heroPower);
-    if (prevClassVisual.name !== nextClassVisual.name) {
-      triggerEvolution(prevClassVisual, nextClassVisual);
+    // 進化チェック（ティア比較）
+    const prevTier = getHeroTier(classId, initialPower);
+    const nextTier = getHeroTier(classId, activeGame.heroPower);
+    if (nextTier > prevTier && nextTier > activeGame.maxEvoTier) {
+      // 新しい最高ティアを記録
+      const prevClassVisual = getHeroClassByTier(classId, prevTier);
+      const nextClassVisual = getHeroClassByTier(classId, nextTier);
+      triggerEvolution(prevClassVisual, nextClassVisual, nextTier);
+    } else if (nextTier > prevTier) {
+      // ティアは上がったが既に達成済み（表示のみ）
+      const prevClassVisual = getDynamicHeroClass(classId, initialPower);
+      const nextClassVisual = getDynamicHeroClass(classId, activeGame.heroPower);
+      if (prevClassVisual.name !== nextClassVisual.name) {
+        triggerEvolution(prevClassVisual, nextClassVisual, -1); // -1 = ボーナスなし
+      }
     }
     
     setTimeout(() => {
@@ -1446,13 +1493,34 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
   }, 200);
 };
 
-// 進化ポップアップのトリガー演出
-const triggerEvolution = (prev, next) => {
+// 進化ポップアップのトリガー演出 + ボーナス付与
+const triggerEvolution = (prev, next, newTier) => {
   const overlay = document.getElementById('evolution-overlay');
   const prevIcon = document.getElementById('evo-prev-icon');
   const nextIcon = document.getElementById('evo-next-icon');
   const classNameEl = document.getElementById('evo-class-name');
-  
+
+  // 最高ティアを更新
+  if (newTier > 0) {
+    activeGame.maxEvoTier = newTier;
+  }
+
+  // 進化ボーナスを適用（新規進化時のみ）
+  let bonusLabel = '';
+  if (newTier > 0 && EVO_BONUS[newTier]) {
+    const bonus = EVO_BONUS[newTier];
+    if (bonus.shieldBonus > 0) {
+      activeGame.shield += bonus.shieldBonus;
+    }
+    if (bonus.powerBonus > 0) {
+      const added = Math.round(activeGame.heroPower * bonus.powerBonus);
+      activeGame.heroPower += added;
+    }
+    bonusLabel = bonus.label;
+    updateGlobalCurrencyDisplays();
+  }
+
+  // パネル表示内容をボーナステキストで拡張
   if (prevIcon) prevIcon.innerText = prev.icon;
   if (nextIcon) {
     nextIcon.innerText = next.icon;
@@ -1463,7 +1531,14 @@ const triggerEvolution = (prev, next) => {
     classNameEl.innerText = next.name;
     classNameEl.style.color = next.color;
   }
-  
+
+  // ボーナス表示があればHTMLに挿入
+  const bonusEl = document.getElementById('evo-bonus-text');
+  if (bonusEl) {
+    bonusEl.innerText = bonusLabel;
+    bonusEl.style.display = bonusLabel ? 'block' : 'none';
+  }
+
   window.sounds.playWin(); // 進化時の効果音
   if (overlay) {
     overlay.classList.add('active');
@@ -1471,7 +1546,7 @@ const triggerEvolution = (prev, next) => {
       overlay.classList.remove('active');
       // ヒーローの見た目を即座に更新するためにタワーUIを再描画
       generateTowerUI(activeGame.activeLevelData);
-    }, 1200);
+    }, 1500);
   }
 };
 

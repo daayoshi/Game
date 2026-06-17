@@ -1,6 +1,6 @@
 {
   "name": "hero-tower-math-merge",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "An addictive math tower merge game inspired by popular mobile game ads.",
   "main": "index.html",
   "scripts": {
