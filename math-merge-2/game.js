@@ -664,9 +664,16 @@ const createEntityDOM = (data, tIdx, fIdx) => {
       break;
       
     case 'enemy':
-      el.classList.add('entity-enemy');
+    case 'enemy_sub':
+      el.classList.add('entity-enemy', 'entity-enemy-sub');
       iconEl.innerText = getEnemyIcon(data.val);
-      valEl.innerText = data.val;
+      valEl.innerText = `-${data.val}`;
+      break;
+      
+    case 'enemy_div':
+      el.classList.add('entity-enemy', 'entity-enemy-div');
+      iconEl.innerText = '🧟';
+      valEl.innerText = `÷${data.val}`;
       break;
       
     case 'boss':
@@ -1013,6 +1020,37 @@ const clearRoomHovers = () => {
   });
 };
 
+// 一直線ダッシュ移動が可能かチェック
+const canDashTo = (targetTowerIdx, targetFloorIdx) => {
+  const sTower = activeGame.heroPosition.towerIdx;
+  const sFloor = activeGame.heroPosition.floorIdx;
+
+  // 直上への移動でなければならない
+  if (targetTowerIdx !== sTower || targetFloorIdx <= sFloor) {
+    return false;
+  }
+
+  const towers = activeGame.activeLevelData.towers;
+
+  // 途中のマスがすべて一本道の empty であるかをチェック
+  for (let f = sFloor + 1; f < targetFloorIdx; f++) {
+    const floorData = towers[sTower].floors[f];
+    if (!floorData || floorData.type !== 'empty') {
+      return false;
+    }
+    
+    // 左右が壁または場外であることの確認
+    const leftWall = (sTower - 1 < 0) || (!towers[sTower - 1].floors[f] || towers[sTower - 1].floors[f].type === 'wall');
+    const rightWall = (sTower + 1 >= towers.length) || (!towers[sTower + 1].floors[f] || towers[sTower + 1].floors[f].type === 'wall');
+    
+    if (!leftWall || !rightWall) {
+      return false;
+    }
+  }
+
+  return true;
+};
+
 // 移動可能かどうかのバリデーション
 const isValidMove = (targetTowerIdx, targetFloorIdx, floorData) => {
   const sTower = activeGame.heroPosition.towerIdx;
@@ -1027,20 +1065,23 @@ const isValidMove = (targetTowerIdx, targetFloorIdx, floorData) => {
     return false;
   }
 
-  // ルール: 隣接する上下左右の部屋（マンハッタン距離が1）のみ移動可能
-  const isAdjacent = (Math.abs(targetTowerIdx - sTower) === 1 && targetFloorIdx === sFloor) ||
-                     (Math.abs(targetFloorIdx - sFloor) === 1 && targetTowerIdx === sTower);
-
-  if (!isAdjacent) {
-    return false;
-  }
-
   // ロックされた扉の場合、鍵を持っていないと進入できない
   if (floorData.type === 'locked_gate' && activeGame.keys <= 0) {
     return false;
   }
+
+  // 1. 通常の3択移動（左上・直上・右上への1歩上移動）
+  const isThreeWayMove = (targetFloorIdx === sFloor + 1) && (Math.abs(targetTowerIdx - sTower) <= 1);
+  if (isThreeWayMove) {
+    return true;
+  }
+
+  // 2. 一直線ダッシュ移動（直上への複数階ダッシュ）
+  if (canDashTo(targetTowerIdx, targetFloorIdx)) {
+    return true;
+  }
   
-  return true;
+  return false;
 };
 
 // ==================== 10. COMBAT & RESOLUTION ====================
@@ -1090,39 +1131,92 @@ const executeMove = (targetTowerIdx, targetFloorIdx) => {
     
     switch (targetFloor.type) {
       case 'enemy':
-      case 'boss':
-        // 勝利判定：通常攻撃力、または（攻撃力＋シールド）が敵以上であること
-        if (activeGame.heroPower >= targetFloor.val) {
-          // 通常勝利！敵の数値を吸収する
-          activeGame.heroPower += targetFloor.val;
-          powerChangeText = `+${targetFloor.val}`;
-          powerChangeType = 'float-add';
-          gameState.stats.totalDefeats++;
-          
-          // ゴールド獲得
-          let enemyGold = Math.round(targetFloor.val * 0.5);
-          if (targetFloor.type === 'boss') enemyGold = targetFloor.val * 2;
-          goldEarned = applyGoldBonus(enemyGold);
-        } else if (activeGame.heroPower + activeGame.shield >= targetFloor.val) {
-          // シールドを消費して勝利！
-          const shieldDamage = targetFloor.val - activeGame.heroPower;
-          activeGame.shield -= shieldDamage;
-          activeGame.heroPower += targetFloor.val; // 吸収加算
-          
-          powerChangeText = `+${targetFloor.val} (🛡️-${shieldDamage})`;
-          powerChangeType = 'float-add';
-          gameState.stats.totalDefeats++;
-          
-          let enemyGold = Math.round(targetFloor.val * 0.5);
-          if (targetFloor.type === 'boss') enemyGold = targetFloor.val * 2;
-          goldEarned = applyGoldBonus(enemyGold);
-          
-          window.sounds.playUpgrade(); // 防御成功時の効果音
+      case 'enemy_sub': {
+        // 減算敵: シールドで肩代わり、残りはパワー減算
+        const val = targetFloor.val;
+        let damage = val;
+        let shieldUsed = 0;
+        
+        if (activeGame.shield > 0) {
+          if (activeGame.shield >= damage) {
+            activeGame.shield -= damage;
+            shieldUsed = damage;
+            damage = 0;
+          } else {
+            shieldUsed = activeGame.shield;
+            damage -= activeGame.shield;
+            activeGame.shield = 0;
+          }
+        }
+        
+        if (damage > 0) {
+          activeGame.heroPower -= damage;
+        }
+        
+        if (shieldUsed > 0) {
+          powerChangeText = `-${damage} (🛡️-${shieldUsed})`;
         } else {
-          // 敗北！ゲームオーバー
+          powerChangeText = `-${damage}`;
+        }
+        powerChangeType = 'float-sub';
+        
+        if (activeGame.heroPower <= 0) {
+          activeGame.heroPower = 0;
+          isGameOver = true;
+        } else {
+          // 勝利報酬
+          gameState.stats.totalDefeats++;
+          let enemyGold = Math.round(val * 0.5);
+          goldEarned = applyGoldBonus(enemyGold);
+        }
+        break;
+      }
+      
+      case 'enemy_div': {
+        // 除算敵: シールドが1以上あれば1消費して無効化、なければパワー除算
+        const val = targetFloor.val;
+        if (activeGame.shield > 0) {
+          activeGame.shield--;
+          powerChangeText = `BLOCK! (🛡️-1)`;
+          window.sounds.playUpgrade(); // 防御成功音
+        } else {
+          const oldPower = activeGame.heroPower;
+          activeGame.heroPower = Math.floor(activeGame.heroPower / val);
+          const diff = oldPower - activeGame.heroPower;
+          powerChangeText = `÷${val} (-${diff})`;
+          if (activeGame.heroPower <= 0) {
+            activeGame.heroPower = 0;
+            isGameOver = true;
+          }
+        }
+        powerChangeType = 'float-sub';
+        
+        if (!isGameOver) {
+          gameState.stats.totalDefeats++;
+          let enemyGold = Math.round(val * 2); // 除算はコストが高いので多めのゴールド
+          goldEarned = applyGoldBonus(enemyGold);
+        }
+        break;
+      }
+      
+      case 'boss': {
+        // ボス: 純粋なパワー勝負（シールドは肩代わりしない）
+        const val = targetFloor.val;
+        if (activeGame.heroPower >= val) {
+          // 撃破！
+          activeGame.heroPower += val; // ボスパワーを吸収
+          powerChangeText = `撃破! +${val}`;
+          powerChangeType = 'float-add';
+          gameState.stats.totalDefeats++;
+          
+          let bossGold = val * 2;
+          goldEarned = applyGoldBonus(bossGold);
+        } else {
+          // 敗北
           isGameOver = true;
         }
         break;
+      }
         
       case 'item_add':
         activeGame.heroPower += targetFloor.val;
@@ -1615,172 +1709,164 @@ window.addEventListener('DOMContentLoaded', () => {
 // ==================== 14. STAGE DEFINITIONS (GRID DUNGEONS) ====================
 // 各タワー(towers)のフロア(floors)を下から積み上げ、2Dグリッドダンジョン(X: タワー, Y: フロア)として構成
 const STAGES = [
-  // Stage 1: 移動と戦闘の基本 (3x2)
+  // Stage 1: 基本の3択と加算・減算
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 5 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'enemy', val: 12 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_sub', val: 5 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_add', val: 10 }, { type: 'boss', val: 20 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 2: シールドの盾と強敵 (3x2)
+  // Stage 2: 除算と乗算の初登場
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 15 }] },
-      { floors: [{ type: 'empty', val: 0 }, { type: 'enemy', val: 25 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'chest', val: 100 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_add', val: 15 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy_div', val: 2 }, { type: 'empty', val: 0 }, { type: 'boss', val: 25 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_mul', val: 2 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 3: 黄金の鍵と閉じられた扉 (3x3)
+  // Stage 3: シールドと一直線ダッシュの体験
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_key', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 15 }] },
-      { floors: [{ type: 'locked_gate', val: 0 }, { type: 'enemy', val: 20 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'item_shield', val: 10 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'boss', val: 20 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 4: 迷路の通路と計算の選択 (3x3)
+  // Stage 4: 鍵と扉の仕組み
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_add', val: 8 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 18 }, { type: 'item_mul', val: 2 }] },
-      { floors: [{ type: 'chest', val: 150 }, { type: 'enemy', val: 40 }, { type: 'wall', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 30 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_add', val: 20 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 5: 鍵回収とシールド防衛 (3x3)
+  // Stage 5: 盾で除算を防ぐ
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 12 }, { type: 'item_shield', val: 20 }, { type: 'enemy', val: 45 }] },
-      { floors: [{ type: 'locked_gate', val: 0 }, { type: 'boss', val: 65 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 2 }, { type: 'enemy_div', val: 2 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_mul', val: 3 }, { type: 'boss', val: 45 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 6: 二者択一のトラップと近道 (3x3)
+  // Stage 6: ダッシュと左右選択
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sub', val: 5 }, { type: 'enemy', val: 15 }] },
-      { floors: [{ type: 'item_add', val: 15 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 30 }] },
-      { floors: [{ type: 'enemy', val: 20 }, { type: 'item_mul', val: 2 }, { type: 'chest', val: 200 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_add', val: 30 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy_sub', val: 15 }, { type: 'boss', val: 40 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_shield', val: 5 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 7: トリプルタワー迷宮 (3x4)
+  // Stage 7: シールドと多数の減算敵
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 10 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 22 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'item_shield', val: 30 }, { type: 'enemy', val: 50 }, { type: 'item_mul', val: 2 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_sub', val: 10 }, { type: 'item_shield', val: 15 }, { type: 'enemy_sub', val: 20 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_add', val: 25 }, { type: 'boss', val: 50 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 8: 伝説の剣とシールド収集 (3x4)
+  // Stage 8: 伝説の剣(item_sword)とボスの強襲
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sword', val: 35 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 80 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 45 }, { type: 'item_shield', val: 25 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 120 }, { type: 'chest', val: 300 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_sword', val: 40 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy_div', val: 3 }, { type: 'empty', val: 0 }, { type: 'boss', val: 80 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 9: 分岐路とロックゲート (4x3)
+  // Stage 9: 複雑なパズル、鍵と除算
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 15 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 35 }, { type: 'item_shield', val: 30 }, { type: 'enemy', val: 85 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'item_mul', val: 3 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'enemy_div', val: 2 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy_sub', val: 20 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 100 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_shield', val: 5 }, { type: 'item_add', val: 50 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 10: 左右の駆け引き (4x3)
+  // Stage 10: ダッシュ移動を駆使する難関
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 40 }, { type: 'enemy', val: 110 }] },
-      { floors: [{ type: 'enemy', val: 20 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_add', val: 50 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 180 }, { type: 'chest', val: 400 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_mul', val: 4 }, { type: 'boss', val: 150 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'item_shield', val: 10 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy_sub', val: 30 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 11: ループする回廊 (3x4)
+  // Stage 11: 高難度 3択の交差
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 25 }, { type: 'item_shield', val: 50 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 120 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 60 }, { type: 'item_mul', val: 2 }, { type: 'boss', val: 280 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy_sub', val: 15 }, { type: 'item_add', val: 30 }, { type: 'enemy_div', val: 2 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'empty', val: 0 }, { type: 'enemy_sub', val: 25 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 200 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_key', val: 0 }, { type: 'item_shield', val: 12 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 12: 双子の塔と鍵の連鎖 (4x4)
+  // Stage 12: 盾と剣の試練
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 30 }, { type: 'locked_gate', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 75 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 220 }] },
-      { floors: [{ type: 'item_shield', val: 60 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 180 }, { type: 'chest', val: 500 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 15 }, { type: 'enemy_sub', val: 40 }, { type: 'item_sword', val: 60 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy_div', val: 2 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'boss', val: 250 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_add', val: 40 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 13: 剣の聖域 (3x4)
+  // Stage 13: 鍵が二つ必要なステージ
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_shield', val: 40 }, { type: 'boss', val: 300 }] },
-      { floors: [{ type: 'enemy', val: 35 }, { type: 'item_sword', val: 100 }, { type: 'enemy', val: 140 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 90 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy_sub', val: 50 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 300 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_shield', val: 20 }, { type: 'item_mul', val: 3 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 14: 防衛戦線 (4x4)
+  // Stage 14: ダッシュとブロッキング
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 80 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 40 }, { type: 'enemy', val: 150 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy', val: 260 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 350 }] },
-      { floors: [{ type: 'item_mul', val: 2 }, { type: 'item_add', val: 80 }, { type: 'boss', val: 600 }, { type: 'chest', val: 600 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_add', val: 100 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'boss', val: 400 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'enemy_div', val: 3 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 15: 呪われた迷宮 (3x5)
+  // Stage 15: 大いなる魔導
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sub', val: 20 }, { type: 'enemy', val: 60 }, { type: 'item_shield', val: 50 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 200 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 50 }, { type: 'item_mul', val: 4 }, { type: 'enemy', val: 150 }, { type: 'boss', val: 750 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_add', val: 20 }, { type: 'enemy_sub', val: 30 }, { type: 'item_mul', val: 2 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_shield', val: 10 }, { type: 'enemy_div', val: 2 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 600 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_mul', val: 3 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 16: 四角い大部屋 (4x4)
+  // Stage 16: シールド管理の極限
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'enemy', val: 50 }, { type: 'item_shield', val: 60 }, { type: 'item_key', val: 0 }] },
-      { floors: [{ type: 'item_add', val: 70 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 120 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 400 }] },
-      { floors: [{ type: 'item_mul', val: 3 }, { type: 'enemy', val: 250 }, { type: 'boss', val: 900 }, { type: 'chest', val: 800 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 8 }, { type: 'enemy_sub', val: 50 }, { type: 'enemy_div', val: 2 }, { type: 'item_shield', val: 15 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_add', val: 150 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'boss', val: 800 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_key', val: 0 }, { type: 'enemy_sub', val: 60 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 17: ロック連鎖迷宮 (4x4)
+  // Stage 17: 奈落のダッシュ
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'locked_gate', val: 0 }, { type: 'enemy', val: 80 }, { type: 'item_key', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'item_key', val: 0 }] },
-      { floors: [{ type: 'item_mul', val: 2 }, { type: 'enemy', val: 300 }, { type: 'locked_gate', val: 0 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'item_mul', val: 5 }, { type: 'boss', val: 1000 }, { type: 'princess', val: 0 }] },
+      { floors: [{ type: 'enemy_sub', val: 80 }, { type: 'item_shield', val: 30 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 18: 最強の盾と天をも穿つ魔塔 (3x5)
+  // Stage 18: 王国の守護者
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 150 }, { type: 'enemy', val: 180 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'item_mul', val: 4 }, { type: 'enemy', val: 800 }] },
-      { floors: [{ type: 'enemy', val: 100 }, { type: 'item_sword', val: 200 }, { type: 'enemy', val: 500 }, { type: 'boss', val: 1400 }, { type: 'chest', val: 1000 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy_sub', val: 100 }, { type: 'item_add', val: 200 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'enemy_div', val: 2 }, { type: 'item_shield', val: 40 }, { type: 'wall', val: 0 }, { type: 'empty', val: 0 }, { type: 'boss', val: 1500 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_sword', val: 120 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 19: 運命の試練 (4x4)
+  // Stage 19: 死線と希望の門
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sub', val: 100 }, { type: 'item_shield', val: 200 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'wall', val: 0 }, { type: 'enemy', val: 450 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'enemy', val: 120 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 600 }, { type: 'boss', val: 1800 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'item_add', val: 150 }, { type: 'enemy', val: 900 }, { type: 'princess', val: 0 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_shield', val: 50 }, { type: 'enemy_div', val: 3 }, { type: 'item_mul', val: 3 }, { type: 'enemy_sub', val: 150 }, { type: 'empty', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'empty', val: 0 }, { type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'empty', val: 0 }, { type: 'boss', val: 2000 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_add', val: 300 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   },
-  // Stage 20: 最後の試練「ゴッド・オブルイン」 (4x5)
+  // Stage 20: ゴッド・オブルイン
   {
     towers: [
-      { floors: [{ type: 'hero', val: 0 }, { type: 'item_sword', val: 300 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'enemy', val: 200 }, { type: 'item_shield', val: 300 }, { type: 'locked_gate', val: 0 }, { type: 'wall', val: 0 }] },
-      { floors: [{ type: 'wall', val: 0 }, { type: 'item_mul', val: 3 }, { type: 'enemy', val: 800 }, { type: 'enemy', val: 1500 }, { type: 'locked_gate', val: 0 }] },
-      { floors: [{ type: 'item_key', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy', val: 1200 }, { type: 'boss', val: 5000 }, { type: 'chest', val: 3000 }] }
+      { floors: [{ type: 'hero', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy_div', val: 4 }, { type: 'item_mul', val: 4 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_shield', val: 100 }, { type: 'enemy_sub', val: 200 }, { type: 'item_sword', val: 500 }, { type: 'empty', val: 0 }, { type: 'boss', val: 5000 }, { type: 'princess', val: 0 }, { type: 'wall', val: 0 }] },
+      { floors: [{ type: 'wall', val: 0 }, { type: 'item_key', val: 0 }, { type: 'empty', val: 0 }, { type: 'locked_gate', val: 0 }, { type: 'enemy_sub', val: 300 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }, { type: 'wall', val: 0 }] }
     ]
   }
 ];

@@ -1440,3 +1440,29 @@ body {
     0% { transform: translateX(0); opacity: 0.5; }
     100% { transform: translateX(8px); opacity: 1; }
 }
+
+/* 新規の敵タイプ用スタイル */
+.entity-enemy-sub {
+    border-color: var(--neon-pink) !important;
+    color: var(--neon-pink) !important;
+    box-shadow: 0 0 10px rgba(255, 0, 127, 0.25) !important;
+}
+
+.entity-enemy-sub .entity-val {
+    border-color: var(--neon-pink) !important;
+    color: var(--neon-pink) !important;
+    text-shadow: 0 0 4px var(--neon-pink-glow) !important;
+}
+
+.entity-enemy-div {
+    border-color: var(--neon-purple) !important;
+    color: var(--neon-purple) !important;
+    box-shadow: 0 0 10px rgba(189, 0, 255, 0.25) !important;
+    background: linear-gradient(135deg, rgba(189, 0, 255, 0.1) 0%, rgba(100, 0, 200, 0.15) 100%) !important;
+}
+
+.entity-enemy-div .entity-val {
+    border-color: var(--neon-purple) !important;
+    color: #ffffff !important;
+    text-shadow: 0 0 4px var(--neon-purple-glow) !important;
+}
